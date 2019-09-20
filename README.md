@@ -48,7 +48,7 @@ This sample is an ASP.NET Core WebAPI application designed to "fork and code" wi
 * Azure subscription (with appropriate permissions)
 * Bash shell (tested on Mac, Ubuntu, Windows with WSL2)
   * Will not work in Cloud Shell unless you have a remote dockerd
-* Azure CLI 2.0.72+ ([download](//https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest))
+* Azure CLI 2.0.72+ ([download](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest))
 * Docker CLI ([download](https://docs.docker.com/install/))
 * .NET Core SDK 2.2 ([download](https://dotnet.microsoft.com/download))
 * Visual Studio Code (optional) ([download](https://code.visualstudio.com/download))
