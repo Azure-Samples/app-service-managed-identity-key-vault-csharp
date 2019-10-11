@@ -27,7 +27,7 @@ namespace Mikv
                 // kvUrl is required
                 if (string.IsNullOrEmpty(kvUrl))
                 {
-                    Console.WriteLine("Key Vault name missing");
+                    Console.WriteLine("KeyVaultName missing");
 
                     Environment.Exit(-1);
                 }
@@ -44,7 +44,7 @@ namespace Mikv
                 // log a not using app insights warning
                 if (string.IsNullOrEmpty(config[Constants.AppInsightsKey]))
                 {
-                    logger.LogWarning("App Insights Key not set");
+                    logger.LogWarning("AppInsightsKey not set");
                 }
 
                 logger.LogInformation("Web Server Started");
@@ -127,16 +127,8 @@ namespace Mikv
         /// <param name="config">Configuration Root</param>
         static void UseUrls(IWebHostBuilder builder, IConfigurationRoot config)
         {
-            // get the port or use default
-            int port = config.GetValue<int>(Constants.Port);
-
-            if (port == 0)
-            {
-                port = 4120;
-            }
-
-            // listen on the port
-            builder.UseUrls(string.Format("http://*:{0}/", port));
+            // listen on the default port
+            builder.UseUrls(string.Format("http://*:{0}/", Constants.Port));
         }
 
         /// <summary>
@@ -150,13 +142,13 @@ namespace Mikv
             string kvName = Environment.GetEnvironmentVariable(Constants.KeyVaultName);
 
             // command line arg overrides environment variable
-            if (args.Length > 0 && ! args[0].StartsWith("-"))
+            if (args.Length > 0 && !args[0].StartsWith("-"))
             {
                 kvName = args[0].Trim();
             }
 
             // build the URL
-            if (!string.IsNullOrEmpty(kvName) && ! kvName.StartsWith("https://"))
+            if (!string.IsNullOrEmpty(kvName) && !kvName.StartsWith("https://"))
             {
                 return "https://" + kvName + ".vault.azure.net/";
             }

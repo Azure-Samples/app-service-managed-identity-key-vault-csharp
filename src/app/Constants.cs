@@ -12,21 +12,13 @@
         public static readonly string XmlCommentsPath = SwaggerName + ".xml";
 
         public static readonly string KeyVaultName = "KeyVaultName";
-        public static readonly string KeyVaultUrlError = "KeyVaultUrl not set";
-        public static readonly string KeyVaultError = "Unable to read from Key Vault {0}";
         public static readonly string KeyVaultSecretName = "MySecret";
 
         public static readonly string AppInsightsKey = "AppInsightsKey";
-        public static readonly string AppInsightsKeyError = "App Insights Key specified";
 
-        public static readonly string Port = "Port";
-        public static readonly string PortError = "Listen port is invalid: {0}";
-        public static readonly string PortException = "Port not specified";
+        // if port is changed, also update value in the Dockerfiles
+        public static readonly string Port = "4120";
 
-        public static readonly string HealthzResult = "Movies: 100\r\nActors: 553\r\nGenres: 20";
-        public static readonly string HealthzError = "Healthz Failed:\r\n{0}";
-
-        public static readonly int NotFound = 404;
-        public static readonly int ServerError = 500;
+        public static readonly int ServerError = (int)System.Net.HttpStatusCode.InternalServerError;
     }
 }

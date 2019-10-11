@@ -1,11 +1,16 @@
 ### Build the container
 FROM mcr.microsoft.com/dotnet/core/sdk:2.2 AS build
-RUN mkdir -p /src/app && \
-    mkdir -p /src/unit-tests
+
+### Optional: Set Proxy Variables
+# ENV http_proxy {value}
+# ENV https_proxy {value}
+# ENV HTTP_PROXY {value}
+# ENV HTTPS_PROXY {value}
+# ENV no_proxy {value}
+# ENV NO_PROXY {value}
 
 ### copy the source code
-COPY app /src/app
-COPY unit-tests /src/unit-tests
+COPY . /src
 
 ## Run unit tests
 WORKDIR /src/unit-tests
@@ -15,18 +20,19 @@ RUN dotnet test --logger:trx
 WORKDIR /src/app
 RUN dotnet publish -c Release -o /app
 
-
 ###########################################################
 
 ### Build the runtime container
 FROM mcr.microsoft.com/dotnet/core/aspnet:2.2 AS runtime
+
+### if port is changed, also update value in Constants.cs
 EXPOSE 4120
 WORKDIR /app
 
 ### create a user
 RUN groupadd -g 4120 mikv && \
     useradd -r  -u 4120 -g mikv mikv && \
-### dotnet needs a home directory
+    ### dotnet needs a home directory
     mkdir -p /home/mikv && \
     chown -R mikv:mikv /home/mikv
 
