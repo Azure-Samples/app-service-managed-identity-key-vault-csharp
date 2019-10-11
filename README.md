@@ -30,11 +30,14 @@ This sample is an ASP.NET Core WebAPI application designed to "fork and code" wi
 * Securely build and deploy the Docker container from Container Registry or Azure DevOps
 * Automatically send telemetry and logs to Azure Monitor
 
+![alt text](./docs/images/architecture.jpg "Architecture Diagram")
+
 ## Contents
 
 | File/folder          | Description |
 |----------------------|-----------------------------------------|
 | `.gitignore`         | Define what to ignore at commit time |
+| `CHANGELOG.md` | Repo change log |
 | `CODE_OF_CONDUCT.md` | Microsoft Open Source Code of Conduct |
 | `CONTRIBUTING.md`    | Guidelines for contributing to the repo |
 | `Dockerfile`         | Docker build file |
@@ -45,10 +48,11 @@ This sample is an ASP.NET Core WebAPI application designed to "fork and code" wi
 
 ## Prerequisites
 
-* Azure subscription (with appropriate permissions)
+* Azure subscription with permissions to create:
+  * Resource Groups, Service Principals, Keyvault, App Service, Azure Container Registry, Azure Monitor
 * Bash shell (tested on Mac, Ubuntu, Windows with WSL2)
   * Will not work in Cloud Shell unless you have a remote dockerd
-* Azure CLI 2.0.72+ ([download](//https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest))
+* Azure CLI 2.0.72+ ([download](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest))
 * Docker CLI ([download](https://docs.docker.com/install/))
 * .NET Core SDK 2.2 ([download](https://dotnet.microsoft.com/download))
 * Visual Studio Code (optional) ([download](https://code.visualstudio.com/download))
@@ -79,7 +83,7 @@ Choose a unique DNS name
 # this will be the prefix for all resources
 # do not include punctuation - only use a-z and 0-9
 # must be at least 5 characters long
-# must start with a-z
+# must start with a-z (only lowercase)
 export mikv_Name="youruniquename"
 
 ### if nslookup doesn't fail to resolve, change mikv_Name
@@ -110,6 +114,20 @@ export mikv_App_RG=${mikv_Name}-rg-app
 # create the resource groups
 az group create -n $mikv_App_RG -l $mikv_Location
 az group create -n $mikv_ACR_RG -l $mikv_Location
+
+```
+
+Save your environment variables for ease of reuse and picking up where you left off
+
+```bash
+
+# run the saveenv.sh script at any time to save mikv_* variables to ~/${mikv_Name}.env
+# make sure you are in the root of the repo
+./saveenv.sh
+
+# at any point if your terminal environment gets cleared, you can source the file
+# you only need to remember the name of the env file (or set the $mikv_Name variable again)
+source ~/{yoursameuniquename}.env
 
 ```
 
@@ -162,6 +180,30 @@ dotnet run $mikv_Name &
 
 # the application takes about 10 seconds to start
 # wait for the web server started message
+curl http://localhost:4120/healthz
+
+```
+
+(Alternative) Run the application as a local container
+
+
+```bash
+
+# make sure you are in the src folder
+cd ..
+
+# build the dev image
+# you may see red warnings in the build output, they are safe to ignore
+# examples: "debconf: ..." or "dpkg-preconfigure: ..."
+docker build -t mikv-dev -f Dockerfile-Dev .
+
+# run the container
+# mount your ~/.azure directory to container root/.azure directory
+docker run -d -p 4120:4120 --name mikv-dev -v ~/.azure:/root/.azure mikv-dev "dotnet" "run" "${mikv_Name}"
+
+# check the logs
+# re-run until the application started message appears
+docker logs mikv-dev
 
 ```
 
@@ -180,6 +222,7 @@ curl localhost:4120/api/secret
 # Swagger endpoints
 # should return Swagger UI HTML
 curl -L localhost:4120/
+
 # should return json object describing API
 curl localhost:4120/swagger/mikv/swagger.json
 
@@ -192,6 +235,16 @@ Stop the app
 fg
 
 # press ctl-c
+
+```
+
+(Alternative) Stop and remove the container
+
+```bash
+
+docker stop mikv-dev
+
+docker rm mikv-dev
 
 ```
 
@@ -209,31 +262,10 @@ az acr create --sku Standard --admin-enabled false -g $mikv_ACR_RG -n $mikv_Name
 az acr login -n $mikv_Name
 
 # Build the container with az acr build
-### Make sure you are in the root of the repo
+### Make sure you are in the src folder
 
 cd ..
 az acr build -r $mikv_Name -t $mikv_Name.azurecr.io/mikv-csharp .
-
-# Optionally, you can build the Docker image locally and push to ACR
-docker build -t $mikv_Name.azurecr.io/mikv-csharp .
-docker push $mikv_Name.azurecr.io/mikv-csharp
-
-```
-
-Create Azure Monitor
-
-* The Application Insights extension is in preview and needs to be added to the CLI
-
-```bash
-
-# Add App Insights extension
-az extension add -n application-insights
-
-# Create App Insights
-export mikv_AppInsights_Key=$(az monitor app-insights component create -g $mikv_App_RG -l $mikv_Location -a $mikv_Name --query instrumentationKey -o tsv)
-
-# add App Insights Key to Key Vault
-az keyvault secret set -o table --vault-name $mikv_Name --name "AppInsightsKey" --value $mikv_AppInsights_Key
 
 ```
 
@@ -256,6 +288,23 @@ az role assignment create --assignee $mikv_SP_ID --scope $mikv_ACR_Id --role acr
 # add credentials to Key Vault
 az keyvault secret set -o table --vault-name $mikv_Name --name "AcrUserId" --value $mikv_SP_ID
 az keyvault secret set -o table --vault-name $mikv_Name --name "AcrPassword" --value $mikv_SP_PWD
+
+```
+
+Create Azure Monitor
+
+* The Application Insights extension is in preview and needs to be added to the CLI
+
+```bash
+
+# Add App Insights extension
+az extension add -n application-insights
+
+# Create App Insights
+export mikv_AppInsights_Key=$(az monitor app-insights component create -g $mikv_App_RG -l $mikv_Location -a $mikv_Name --query instrumentationKey -o tsv)
+
+# add App Insights Key to Key Vault
+az keyvault secret set -o table --vault-name $mikv_Name --name "AppInsightsKey" --value $mikv_AppInsights_Key
 
 ```
 
@@ -293,6 +342,10 @@ az webapp log config --docker-container-logging filesystem -g $mikv_App_RG -n $m
 export mikv_AcrUserId=$(az keyvault secret show --vault-name $mikv_Name --name "AcrUserId" --query id -o tsv)
 export mikv_AcrPassword=$(az keyvault secret show --vault-name $mikv_Name --name "AcrPassword" --query id -o tsv)
 
+# save your mikv_* environment variables for reuse
+# make sure you are in the root of the repo
+./saveenv.sh
+
 # configure the Web App to use Container Registry
 # get Service Principal Id and Key from Key Vault
 az webapp config container set -n $mikv_Name -g $mikv_App_RG \
@@ -327,6 +380,7 @@ curl https://${mikv_Name}.azurewebsites.net/api/secret
 # Swagger endpoints
 # should return Swagger UI HTML
 curl -L https://${mikv_Name}.azurewebsites.net/
+
 # should return json object describing API
 curl https://${mikv_Name}.azurewebsites.net/swagger/mikv/swagger.json
 
