@@ -5,7 +5,7 @@ languages:
 products:
 - azure
 description: "A sample ASP.NET Core WebAPI for bootstrapping your next App Service app using Managed Identity and Key Vault"
-urlFragment: "app-service-managed-identity-key-vault-csharp"
+urlFragment: app-service-managed-identity-key-vault-csharp
 ---
 
 # Build an ASP.NET Core application using App Service, Managed Identity and Key Vault
