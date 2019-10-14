@@ -18,20 +18,6 @@ This sample is an ASP.NET Core WebAPI application designed to "fork and code" wi
 
 ![alt text](./docs/images/architecture.jpg "Architecture Diagram")
 
-## Contents
-
-| File/folder          | Description |
-|----------------------|-----------------------------------------|
-| `.gitignore`         | Define what to ignore at commit time |
-| `CHANGELOG.md` | Repo change log |
-| `CODE_OF_CONDUCT.md` | Microsoft Open Source Code of Conduct |
-| `CONTRIBUTING.md`    | Guidelines for contributing to the repo |
-| `Dockerfile`         | Docker build file |
-| `LICENSE`            | The license for the sample |
-| `README.md`          | This README file |
-| `SECURITY.md`        | Microsoft Security information |
-| `src`                | Source code and tests |
-
 ## Prerequisites
 
 * Azure subscription with permissions to create:
