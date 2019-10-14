@@ -1,9 +1,21 @@
 ---
-services: app-service, key-vault
-platforms: dotnet, linux
-languages: csharp
+services:
+- app-service
+- key-vault
+- azure-app-service
+- azure-key-vault
+platforms:
+- dotnet
+- linux
+languages:
+- csharp
+products:
+- azure
+- dotnet
+- aspnet
+- azure-app-service
+- azure-key-vault
 author: aflinchb
-products: azure
 description: "A sample ASP.NET Core WebAPI for bootstrapping your next App Service app using Managed Identity and Key Vault"
 urlFragment: app-service-managed-identity-key-vault-csharp
 page_type: sample
