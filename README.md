@@ -4,6 +4,9 @@ platforms: dotnet, linux
 languages: csharp
 author: aflinchb
 products: azure
+description: "A sample ASP.NET Core WebAPI for bootstrapping your next App Service app using Managed Identity and Key Vault"
+urlFragment: app-service-managed-identity-key-vault-csharp
+page_type: sample
 ---
 
 # Build an ASP.NET Core application using App Service, Managed Identity and Key Vault
