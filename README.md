@@ -1,11 +1,24 @@
 ---
-page_type: sample
+services:
+- app-service
+- key-vault
+- azure-app-service
+- azure-key-vault
+platforms:
+- dotnet
+- linux
 languages:
 - csharp
 products:
 - azure
+- dotnet
+- aspnet
+- azure-app-service
+- azure-key-vault
+author: aflinchb
 description: "A sample ASP.NET Core WebAPI for bootstrapping your next App Service app using Managed Identity and Key Vault"
 urlFragment: app-service-managed-identity-key-vault-csharp
+page_type: sample
 ---
 
 # Build an ASP.NET Core application using App Service, Managed Identity and Key Vault
@@ -19,20 +32,6 @@ This sample is an ASP.NET Core WebAPI application designed to "fork and code" wi
 * Automatically send telemetry and logs to Azure Monitor
 
 ![alt text](./docs/images/architecture.jpg "Architecture Diagram")
-
-## Contents
-
-| File/folder          | Description |
-|----------------------|-----------------------------------------|
-| `.gitignore`         | Define what to ignore at commit time |
-| `CHANGELOG.md` | Repo change log |
-| `CODE_OF_CONDUCT.md` | Microsoft Open Source Code of Conduct |
-| `CONTRIBUTING.md`    | Guidelines for contributing to the repo |
-| `Dockerfile`         | Docker build file |
-| `LICENSE`            | The license for the sample |
-| `README.md`          | This README file |
-| `SECURITY.md`        | Microsoft Security information |
-| `src`                | Source code and tests |
 
 ## Prerequisites
 
