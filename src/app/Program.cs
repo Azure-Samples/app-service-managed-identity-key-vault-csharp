@@ -82,7 +82,8 @@ namespace Mikv
                 .AddJsonFile("appSettings.json", optional: true);
 
             // use Azure Key Vault via MSI
-            cfgBuilder.AddAzureKeyVault(kvUrl);
+            // todo - fix this
+            //cfgBuilder.AddAzureKeyVault(kvUrl);
 
             // build the config
             return cfgBuilder.Build();

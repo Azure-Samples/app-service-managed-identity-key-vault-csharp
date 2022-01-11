@@ -42,7 +42,7 @@ namespace Mikv
             // Register the Swagger generator, defining one or more Swagger documents
             services.AddSwaggerGen(c =>
             {
-                c.SwaggerDoc(Constants.SwaggerName, new Info { Title = Constants.SwaggerTitle, Version = Constants.SwaggerVersion });
+                c.SwaggerDoc(Constants.SwaggerName, new () { Title = Constants.SwaggerTitle, Version = Constants.SwaggerVersion });
             });
         }
 
@@ -85,8 +85,9 @@ namespace Mikv
         /// <returns>string - path to xml file</returns>
         private string GetXmlCommentsPath()
         {
-            var app = Microsoft.Extensions.PlatformAbstractions.PlatformServices.Default.Application;
-            return System.IO.Path.Combine(app.ApplicationBasePath, Constants.XmlCommentsPath);
+            // todo - fix this
+            // var app = Microsoft.Extensions.PlatformAbstractions.PlatformServices.Default.Application;
+            return "."; // System.IO.Path.Combine(app.ApplicationBasePath, Constants.XmlCommentsPath);
         }
     }
 }
