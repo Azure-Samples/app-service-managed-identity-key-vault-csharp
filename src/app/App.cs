@@ -1,11 +1,14 @@
-﻿using Microsoft.AspNetCore;
+﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using System;
+using System.IO;
+using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System;
-using System.IO;
 
 namespace Mikv
 {
@@ -13,7 +16,7 @@ namespace Mikv
     {
         /// <summary>
         /// Main entry point
-        /// 
+        ///
         /// Configure and run the kestrel server
         /// </summary>
         /// <param name="args">command line args</param>
@@ -55,7 +58,6 @@ namespace Mikv
                 // exiting
                 logger.LogInformation("Web Server Stopped");
             }
-
             catch (Exception ex)
             {
                 // end app on error
@@ -67,14 +69,14 @@ namespace Mikv
 
         /// <summary>
         /// Builds the config for the web server
-        /// 
+        ///
         /// Uses Key Vault via MSI in production
-        /// 
+        ///
         /// Uses dotnet secrets in development
         /// </summary>
         /// <param name="kvUrl">URL of the Key Vault to use</param>
         /// <returns>Root Configuration</returns>
-        static IConfigurationRoot BuildConfig(string kvUrl)
+        private static IConfigurationRoot BuildConfig(string kvUrl)
         {
             // standard config builder
             var cfgBuilder = new ConfigurationBuilder()
@@ -94,7 +96,7 @@ namespace Mikv
         /// </summary>
         /// <param name="kvUrl">URL of the Key Vault</param>
         /// <returns>Web Host ready to run</returns>
-        static IWebHost BuildHost(string kvUrl)
+        private static IWebHost BuildHost(string kvUrl)
         {
             // configure the web host builder
             IWebHostBuilder builder = WebHost.CreateDefaultBuilder()
@@ -126,7 +128,7 @@ namespace Mikv
         /// </summary>
         /// <param name="builder">Web Host Builder</param>
         /// <param name="config">Configuration Root</param>
-        static void UseUrls(IWebHostBuilder builder, IConfigurationRoot config)
+        private static void UseUrls(IWebHostBuilder builder, IConfigurationRoot config)
         {
             // listen on the default port
             builder.UseUrls(string.Format("http://*:{0}/", Constants.Port));
@@ -137,7 +139,7 @@ namespace Mikv
         /// </summary>
         /// <param name="args">command line args</param>
         /// <returns>URL to Key Vault</returns>
-        static string GetKeyVaultUrl(string[] args)
+        private static string GetKeyVaultUrl(string[] args)
         {
             // get the key vault name from the environment variable
             string kvName = Environment.GetEnvironmentVariable(Constants.KeyVaultName);

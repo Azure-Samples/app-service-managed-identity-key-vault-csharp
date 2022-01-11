@@ -1,4 +1,7 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
@@ -30,8 +33,9 @@ namespace Mikv
         /// <param name="services">The services in the web host</param>
         public void ConfigureServices(IServiceCollection services)
         {
-            // add MVC 2.2
-            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
+            // add MVC
+            // todo - do we need this?
+            services.AddMvc();
 
             // configure Swagger
             services.ConfigureSwaggerGen(options =>
@@ -63,7 +67,7 @@ namespace Mikv
                 // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
                 app.UseHsts();
             }
-            
+
             // Enable middleware to serve generated Swagger as a JSON endpoint.
             app.UseSwagger();
 
@@ -79,7 +83,7 @@ namespace Mikv
 
         /// <summary>
         /// Get the path to the XML docs generated at compile time
-        /// 
+        ///
         /// Swagger uses this to annotate the documentation
         /// </summary>
         /// <returns>string - path to xml file</returns>
