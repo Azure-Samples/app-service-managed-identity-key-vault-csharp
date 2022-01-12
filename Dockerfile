@@ -29,4 +29,6 @@ RUN chown -R mikv:mikv /app
 # run as the mikv user
 USER mikv
 
+EXPOSE 8080
+
 ENTRYPOINT [ "dotnet",  "mikv.dll" ]
