@@ -70,7 +70,7 @@ Choose a unique DNS name
 # do not include punctuation - only use a-z and 0-9
 # must be at least 5 characters long
 # must start with a-z (only lowercase)
-export mikv_Name="youruniquename"
+export mikv_Name=youruniquename
 
 ### if nslookup doesn't fail to resolve, change mikv_Name
 nslookup ${mikv_Name}.azurewebsites.net
@@ -122,20 +122,7 @@ Create Azure Key Vault
 az keyvault create -g $mikv_RG -n $mikv_Name
 
 # add a secret
-az keyvault secret set -o table --vault-name $mikv_Name --name "MySecret" --value "Hello from Key Vault and Managed Identity"
-
-```
-
-(Optional) In order to run the application locally, each developer will need access to the Key Vault. Since you created the Key Vault during setup, you will automatically have permission, so this step is only required for additional developers.
-
-Use the following command to grant permissions to each developer that will need access.
-
-```bash
-# get the object id for each developer (optional)
-export dev_Object_Id=$(az ad user show --id {developer email address} --query objectId -o tsv)
-
-# grant Key Vault access to each developer (optional)
-az keyvault set-policy -n $mikv_Name --secret-permissions get list --key-permissions get list --object-id $dev_Object_Id
+export mikv_MySecret=$(az keyvault secret set --vault-name $mikv_Name --name "MySecret" --value "Hello from Key Vault and Managed Identity" --query id -o tsv)
 
 ```
 
@@ -146,46 +133,22 @@ Setup Container Registry
 ```bash
 
 # create the ACR
-### az acr create --sku Standard --admin-enabled false -g $mikv_RG -n $mikv_Name
-### todo - fix this
-az acr create --sku Standard --admin-enabled true -g $mikv_RG -n $mikv_Name
+az acr create --sku Standard --admin-enabled false -g $mikv_RG -n $mikv_Name
 
 # Login to ACR
 # If you get an error that the login server isn't available, it's a DNS issue that will resolve in a minute or two, just retry
 az acr login -n $mikv_Name
 
 # Build the container with az acr build
-### Make sure you are in the src folder
+### Make sure you are in the root folder
 
 az acr build -r $mikv_Name -t $mikv_Name.azurecr.io/mikv .
 
 ```
 
-Create a Service Principal for Container Registry
-
-* App Service will use this Service Principal to access Container Registry
-
-```bash
-
-# create a Service Principal
-export mikv_SP_PWD=$(az ad sp create-for-rbac -n http://${mikv_Name}-acr-sp --query password -o tsv)
-export mikv_SP_ID=$(az ad sp show --id http://${mikv_Name}-acr-sp --query appId -o tsv)
-
-# get the Container Registry Id
-export mikv_ACR_Id=$(az acr show -n $mikv_Name -g $mikv_RG --query "id" -o tsv)
-
-# assign acrpull access to Service Principal
-az role assignment create --assignee $mikv_SP_ID --scope $mikv_ACR_Id --role acrpull
-
-# add credentials to Key Vault
-az keyvault secret set -o table --vault-name $mikv_Name --name "AcrUserId" --value $mikv_SP_ID
-az keyvault secret set -o table --vault-name $mikv_Name --name "AcrPassword" --value $mikv_SP_PWD
-
-```
-
 Create and configure App Service (Web App for Containers)
 
-* App Service will fail to start until configured properly
+> App Service will fail to start until configured properly
 
 ```bash
 
@@ -193,48 +156,49 @@ Create and configure App Service (Web App for Containers)
 az appservice plan create --sku B1 --is-linux -g $mikv_RG -n ${mikv_Name}-plan
 
 # create Web App for Containers
-### todo - create with MI
-az webapp create --deployment-container-image-name bartr/mikv -g $mikv_RG -n $mikv_Name -p ${mikv_Name}-plan
+# use system assigned Managed Identity
+az webapp create --deployment-container-image-name nginx --assign-identity '[system]' -g $mikv_RG -n $mikv_Name -p ${mikv_Name}-plan
 
-# assign Managed Identity
-### todo - this can be done in the create
-export mikv_MSI_ID=$(az webapp identity assign -g $mikv_RG -n $mikv_Name --query principalId -o tsv) && echo $mikv_MSI_ID
+# stop the Web App
+az webapp stop -g $mikv_RG -n $mikv_Name
+
+# get the Managed Identity
+export mikv_MSI_ID=$(az webapp identity show -g $mikv_RG -n $mikv_Name --query principalId -o tsv)
 
 # grant Key Vault access to Managed Identity
 az keyvault set-policy -n $mikv_Name --secret-permissions get list --key-permissions get list --object-id $mikv_MSI_ID
 
 ### Configure Web App
 
-# turn on CI
-az webapp config appsettings set --settings DOCKER_ENABLE_CI=true -g $mikv_RG -n $mikv_Name
-
 # turn on container logging
-# this will send stdout and stderr to the logs
 az webapp log config --docker-container-logging filesystem -g $mikv_RG -n $mikv_Name
 
-# get the Service Principal Id and Key from Key Vault
-export mikv_AcrUserId=$(az keyvault secret show --vault-name $mikv_Name --name "AcrUserId" --query id -o tsv)
-export mikv_AcrPassword=$(az keyvault secret show --vault-name $mikv_Name --name "AcrPassword" --query id -o tsv)
-
 # inject Key Vault secret
-export mikv_MySecret=$(az keyvault secret show --vault-name $mikv_Name --name "MySecret" --query id -o tsv)
 az webapp config appsettings set -g $mikv_RG -n $mikv_Name --settings MySecret="@Microsoft.KeyVault(SecretUri=${mikv_MySecret})"
 
 # save your mikv_* environment variables for reuse
 # make sure you are in the root of the repo
-./saveenv.sh
+./saveenv.sh -y
+
+# set to use docker hub image
+az webapp config container set -n $mikv_Name -g $mikv_RG \
+-i bartr/mikv:latest \
+-r https://index.docker.io/v1
+
 
 # configure the Web App to use Container Registry
 # get Service Principal Id and Key from Key Vault
 ### todo - this isn't working
-az webapp config container set -n $mikv_Name -g $mikv_RG \
--i ${mikv_Name}.azurecr.io/mikv \
--r https://${mikv_Name}.azurecr.io \
--u "@Microsoft.KeyVault(SecretUri=${mikv_AcrUserId})" \
--p "@Microsoft.KeyVault(SecretUri=${mikv_AcrPassword})"
+#az webapp config container set -n $mikv_Name -g $mikv_RG \
+#-i $mikv_Name.azurecr.io/mikv:latest \
+#-r https://$mikv_Name.azurecr.io
 
-# restart the Web App
-az webapp restart -g $mikv_RG -n $mikv_Name
+export mikv_CONFIG=$(az webapp show -n $mikv_Name -g $mikv_RG --query id --output tsv)"/config/web" && echo $mikv_CONFIG
+#az resource update --ids $mikv_CONFIG --set properties.acrUseManagedIdentityCreds=true --query properties.acrUseManagedIdentityCreds -o tsv
+
+
+# start the Web App
+az webapp start -g $mikv_RG -n $mikv_Name
 
 # curl the health check endpoint
 # this will eventually work, but may take a minute or two
