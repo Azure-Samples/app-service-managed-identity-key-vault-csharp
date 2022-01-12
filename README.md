@@ -126,26 +126,6 @@ export mikv_MySecret=$(az keyvault secret set --vault-name $mikv_Name --name "My
 
 ```
 
-Setup Container Registry
-
-* Create the Container Registry with admin access *disabled*
-
-```bash
-
-# create the ACR
-az acr create --sku Standard --admin-enabled false -g $mikv_RG -n $mikv_Name
-
-# Login to ACR
-# If you get an error that the login server isn't available, it's a DNS issue that will resolve in a minute or two, just retry
-az acr login -n $mikv_Name
-
-# Build the container with az acr build
-### Make sure you are in the root folder
-
-az acr build -r $mikv_Name -t $mikv_Name.azurecr.io/mikv .
-
-```
-
 Create and configure App Service (Web App for Containers)
 
 > App Service will fail to start until configured properly
@@ -176,6 +156,8 @@ az webapp log config --docker-container-logging filesystem -g $mikv_RG -n $mikv_
 # inject Key Vault secret
 az webapp config appsettings set -g $mikv_RG -n $mikv_Name --settings MySecret="@Microsoft.KeyVault(SecretUri=${mikv_MySecret})"
 
+export mikv_CONFIG=$(az webapp show -n $mikv_Name -g $mikv_RG --query id --output tsv)"/config/web"
+
 # save your mikv_* environment variables for reuse
 # make sure you are in the root of the repo
 ./saveenv.sh -y
@@ -186,14 +168,14 @@ az webapp config container set -n $mikv_Name -g $mikv_RG \
 -r https://index.docker.io/v1
 
 
+### todo - this isn't working
+
 # configure the Web App to use Container Registry
 # get Service Principal Id and Key from Key Vault
-### todo - this isn't working
 #az webapp config container set -n $mikv_Name -g $mikv_RG \
 #-i $mikv_Name.azurecr.io/mikv:latest \
 #-r https://$mikv_Name.azurecr.io
 
-export mikv_CONFIG=$(az webapp show -n $mikv_Name -g $mikv_RG --query id --output tsv)"/config/web" && echo $mikv_CONFIG
 #az resource update --ids $mikv_CONFIG --set properties.acrUseManagedIdentityCreds=true --query properties.acrUseManagedIdentityCreds -o tsv
 
 
@@ -208,6 +190,26 @@ http https://$mikv_Name.azurewebsites.net/healthz
 
 
 http https://$mikv_Name.azurewebsites.net/api/secret
+
+```
+
+Setup Container Registry
+
+* Create the Container Registry with admin access *disabled*
+
+```bash
+
+# create the ACR
+az acr create --sku Standard --admin-enabled false -g $mikv_RG -n $mikv_Name
+
+# Login to ACR
+# If you get an error that the login server isn't available, it's a DNS issue that will resolve in a minute or two, just retry
+az acr login -n $mikv_Name
+
+# Build the container with az acr build
+### Make sure you are in the root folder
+
+az acr build -r $mikv_Name -t $mikv_Name.azurecr.io/mikv .
 
 ```
 
