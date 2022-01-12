@@ -28,20 +28,19 @@ This sample is an ASP.NET Core WebAPI application designed to "fork and code" wi
 * Securely build, deploy and run an App Service (Web App for Containers) application
 * Use Managed Identity to securely access resources
 * Securely store secrets in Key Vault
-* Securely build and deploy the Docker container from Container Registry or Azure DevOps
-* Automatically send telemetry and logs to Azure Monitor
+* Securely build and deploy the Docker container from Container Registry
 
 ![alt text](./docs/images/architecture.jpg "Architecture Diagram")
 
 ## Prerequisites
 
 * Azure subscription with permissions to create:
-  * Resource Groups, Service Principals, Keyvault, App Service, Azure Container Registry, Azure Monitor
+  * Resource Groups, Service Principals, Keyvault, App Service, Azure Container Registry
 * Bash shell (tested on Mac, Ubuntu, Windows with WSL2)
   * Will not work in Cloud Shell unless you have a remote dockerd
-* Azure CLI 2.0.72+ ([download](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest))
+* Azure CLI ([download](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest))
 * Docker CLI ([download](https://docs.docker.com/install/))
-* .NET Core SDK 2.2 ([download](https://dotnet.microsoft.com/download))
+* .NET Core SDK 6.0 ([download](https://dotnet.microsoft.com/download))
 * Visual Studio Code (optional) ([download](https://code.visualstudio.com/download))
 
 ## Setup
@@ -80,27 +79,21 @@ nslookup ${mikv_Name}.azurecr.io
 
 ```
 
-Create Resource Groups
+Create Resource Group
 
-* When experimenting with this sample, you should create new resource groups to avoid accidentally deleting resources
+* When experimenting with this sample, you should create a new resource group to avoid accidentally deleting resources
   * If you use an existing resource group, please make sure to apply resource locks to avoid accidentally deleting resources
   
-* You will create 2 resource groups
-  * One for ACR
-  * One for App Service, Key Vault and Azure Monitor
-
 ```bash
 
 # set location
 export mikv_Location=centralus
 
 # resource group names
-export mikv_ACR_RG=${mikv_Name}-rg-acr
-export mikv_App_RG=${mikv_Name}-rg-app
+export mikv_RG=${mikv_Name}-mikv-rg
 
 # create the resource groups
-az group create -n $mikv_App_RG -l $mikv_Location
-az group create -n $mikv_ACR_RG -l $mikv_Location
+az group create -n $mikv_RG -l $mikv_Location
 
 ```
 
@@ -126,10 +119,10 @@ Create Azure Key Vault
 ```bash
 
 ## Create the Key Vault and add secrets
-az keyvault create -g $mikv_App_RG -n $mikv_Name
+az keyvault create -g $mikv_RG -n $mikv_Name
 
 # add a secret
-az keyvault secret set -o table --vault-name $mikv_Name --name "MySecret" --value "Hello from Key Vault and Managed Identity!"
+az keyvault secret set -o table --vault-name $mikv_Name --name "MySecret" --value "Hello from Key Vault and Managed Identity"
 
 ```
 
@@ -146,95 +139,6 @@ az keyvault set-policy -n $mikv_Name --secret-permissions get list --key-permiss
 
 ```
 
-Run the unit tests
-
-```bash
-
-cd src/unit-tests
-
-dotnet test --logger:trx
-
-```
-
-Run the application locally
-
-```bash
-
-cd ../app
-
-# run in the background
-dotnet run $mikv_Name &
-
-# the application takes about 10 seconds to start
-# wait for the web server started message
-curl http://localhost:4120/healthz
-
-```
-
-(Alternative) Run the application as a local container
-
-
-```bash
-
-# make sure you are in the src folder
-cd ..
-
-# build the dev image
-# you may see red warnings in the build output, they are safe to ignore
-# examples: "debconf: ..." or "dpkg-preconfigure: ..."
-docker build -t mikv-dev -f Dockerfile-Dev .
-
-# run the container
-# mount your ~/.azure directory to container root/.azure directory
-docker run -d -p 4120:4120 --name mikv-dev -v ~/.azure:/root/.azure mikv-dev "dotnet" "run" "${mikv_Name}"
-
-# check the logs
-# re-run until the application started message appears
-docker logs mikv-dev
-
-```
-
-Run the integration test
-
-```bash
-
-# Health Check endpoint
-# should return 200 - Healthy
-curl localhost:4120/healthz
-
-# WebAPI endpoint
-# should return 200 - Hello from Key Vault and Managed Identity!
-curl localhost:4120/api/secret
-
-# Swagger endpoints
-# should return Swagger UI HTML
-curl -L localhost:4120/
-
-# should return json object describing API
-curl localhost:4120/swagger/mikv/swagger.json
-
-```
-
-Stop the app
-
-```bash
-
-fg
-
-# press ctl-c
-
-```
-
-(Alternative) Stop and remove the container
-
-```bash
-
-docker stop mikv-dev
-
-docker rm mikv-dev
-
-```
-
 Setup Container Registry
 
 * Create the Container Registry with admin access *disabled*
@@ -242,7 +146,9 @@ Setup Container Registry
 ```bash
 
 # create the ACR
-az acr create --sku Standard --admin-enabled false -g $mikv_ACR_RG -n $mikv_Name
+### az acr create --sku Standard --admin-enabled false -g $mikv_RG -n $mikv_Name
+### todo - fix this
+az acr create --sku Standard --admin-enabled true -g $mikv_RG -n $mikv_Name
 
 # Login to ACR
 # If you get an error that the login server isn't available, it's a DNS issue that will resolve in a minute or two, just retry
@@ -251,8 +157,7 @@ az acr login -n $mikv_Name
 # Build the container with az acr build
 ### Make sure you are in the src folder
 
-cd ..
-az acr build -r $mikv_Name -t $mikv_Name.azurecr.io/mikv-csharp .
+az acr build -r $mikv_Name -t $mikv_Name.azurecr.io/mikv .
 
 ```
 
@@ -267,7 +172,7 @@ export mikv_SP_PWD=$(az ad sp create-for-rbac -n http://${mikv_Name}-acr-sp --qu
 export mikv_SP_ID=$(az ad sp show --id http://${mikv_Name}-acr-sp --query appId -o tsv)
 
 # get the Container Registry Id
-export mikv_ACR_Id=$(az acr show -n $mikv_Name -g $mikv_ACR_RG --query "id" -o tsv)
+export mikv_ACR_Id=$(az acr show -n $mikv_Name -g $mikv_RG --query "id" -o tsv)
 
 # assign acrpull access to Service Principal
 az role assignment create --assignee $mikv_SP_ID --scope $mikv_ACR_Id --role acrpull
@@ -278,23 +183,6 @@ az keyvault secret set -o table --vault-name $mikv_Name --name "AcrPassword" --v
 
 ```
 
-Create Azure Monitor
-
-* The Application Insights extension is in preview and needs to be added to the CLI
-
-```bash
-
-# Add App Insights extension
-az extension add -n application-insights
-
-# Create App Insights
-export mikv_AppInsights_Key=$(az monitor app-insights component create -g $mikv_App_RG -l $mikv_Location -a $mikv_Name --query instrumentationKey -o tsv)
-
-# add App Insights Key to Key Vault
-az keyvault secret set -o table --vault-name $mikv_Name --name "AppInsightsKey" --value $mikv_AppInsights_Key
-
-```
-
 Create and configure App Service (Web App for Containers)
 
 * App Service will fail to start until configured properly
@@ -302,13 +190,15 @@ Create and configure App Service (Web App for Containers)
 ```bash
 
 # create App Service plan
-az appservice plan create --sku B1 --is-linux -g $mikv_App_RG -n ${mikv_Name}-plan
+az appservice plan create --sku B1 --is-linux -g $mikv_RG -n ${mikv_Name}-plan
 
 # create Web App for Containers
-az webapp create --deployment-container-image-name hello-world -g $mikv_App_RG -n $mikv_Name -p ${mikv_Name}-plan
+### todo - create with MI
+az webapp create --deployment-container-image-name bartr/mikv -g $mikv_RG -n $mikv_Name -p ${mikv_Name}-plan
 
 # assign Managed Identity
-export mikv_MSI_ID=$(az webapp identity assign -g $mikv_App_RG -n $mikv_Name --query principalId -o tsv) && echo $mikv_MSI_ID
+### todo - this can be done in the create
+export mikv_MSI_ID=$(az webapp identity assign -g $mikv_RG -n $mikv_Name --query principalId -o tsv) && echo $mikv_MSI_ID
 
 # grant Key Vault access to Managed Identity
 az keyvault set-policy -n $mikv_Name --secret-permissions get list --key-permissions get list --object-id $mikv_MSI_ID
@@ -316,18 +206,19 @@ az keyvault set-policy -n $mikv_Name --secret-permissions get list --key-permiss
 ### Configure Web App
 
 # turn on CI
-az webapp config appsettings set --settings DOCKER_ENABLE_CI=true -g $mikv_App_RG -n $mikv_Name
-
-# set the Key Vault name app setting (environment variable)
-az webapp config appsettings set --settings KeyVaultName=$mikv_Name -g $mikv_App_RG -n $mikv_Name
+az webapp config appsettings set --settings DOCKER_ENABLE_CI=true -g $mikv_RG -n $mikv_Name
 
 # turn on container logging
 # this will send stdout and stderr to the logs
-az webapp log config --docker-container-logging filesystem -g $mikv_App_RG -n $mikv_Name
+az webapp log config --docker-container-logging filesystem -g $mikv_RG -n $mikv_Name
 
 # get the Service Principal Id and Key from Key Vault
 export mikv_AcrUserId=$(az keyvault secret show --vault-name $mikv_Name --name "AcrUserId" --query id -o tsv)
 export mikv_AcrPassword=$(az keyvault secret show --vault-name $mikv_Name --name "AcrPassword" --query id -o tsv)
+
+# inject Key Vault secret
+export mikv_MySecret=$(az keyvault secret show --vault-name $mikv_Name --name "MySecret" --query id -o tsv)
+az webapp config appsettings set -g $mikv_RG -n $mikv_Name --settings MySecret="@Microsoft.KeyVault(SecretUri=${mikv_MySecret})"
 
 # save your mikv_* environment variables for reuse
 # make sure you are in the root of the repo
@@ -335,41 +226,24 @@ export mikv_AcrPassword=$(az keyvault secret show --vault-name $mikv_Name --name
 
 # configure the Web App to use Container Registry
 # get Service Principal Id and Key from Key Vault
-az webapp config container set -n $mikv_Name -g $mikv_App_RG \
--i ${mikv_Name}.azurecr.io/mikv-csharp \
+### todo - this isn't working
+az webapp config container set -n $mikv_Name -g $mikv_RG \
+-i ${mikv_Name}.azurecr.io/mikv \
 -r https://${mikv_Name}.azurecr.io \
 -u "@Microsoft.KeyVault(SecretUri=${mikv_AcrUserId})" \
 -p "@Microsoft.KeyVault(SecretUri=${mikv_AcrPassword})"
 
 # restart the Web App
-az webapp restart -g $mikv_App_RG -n $mikv_Name
+az webapp restart -g $mikv_RG -n $mikv_Name
 
 # curl the health check endpoint
 # this will eventually work, but may take a minute or two
 # you may get a 403 error, if so, just run again
 
-curl https://${mikv_Name}.azurewebsites.net/healthz
+http https://$mikv_Name.azurewebsites.net/healthz
 
-```
 
-Run the integration test
-
-```bash
-
-# Health Check endpoint
-# should return 200 - Healthy
-curl https://${mikv_Name}.azurewebsites.net/healthz
-
-# WebAPI endpoint
-# should return 200 - Hello from Key Vault and Managed Identity!
-curl https://${mikv_Name}.azurewebsites.net/api/secret
-
-# Swagger endpoints
-# should return Swagger UI HTML
-curl -L https://${mikv_Name}.azurewebsites.net/
-
-# should return json object describing API
-curl https://${mikv_Name}.azurewebsites.net/swagger/mikv/swagger.json
+http https://$mikv_Name.azurewebsites.net/api/secret
 
 ```
 
