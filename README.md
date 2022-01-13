@@ -154,7 +154,7 @@ az keyvault set-policy -n $mikv_Name --secret-permissions get list --key-permiss
 az webapp log config --docker-container-logging filesystem -g $mikv_RG -n $mikv_Name
 
 # inject Key Vault secret
-az webapp config appsettings set -g $mikv_RG -n $mikv_Name --settings MySecret="@Microsoft.KeyVault(SecretUri=${mikv_MySecret})"
+az webapp config appsettings set -g $mikv_RG -n $mikv_Name --settings MySecret="@Microsoft.KeyVault(SecretUri=$mikv_MySecret)"
 
 export mikv_CONFIG=$(az webapp show -n $mikv_Name -g $mikv_RG --query id --output tsv)"/config/web"
 
@@ -208,7 +208,6 @@ az acr login -n $mikv_Name
 
 # Build the container with az acr build
 ### Make sure you are in the root folder
-
 az acr build -r $mikv_Name -t $mikv_Name.azurecr.io/mikv .
 
 ```
