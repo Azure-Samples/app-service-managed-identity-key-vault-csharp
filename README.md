@@ -68,12 +68,12 @@ az account set -s {subscription name or Id}
 # do not include punctuation - only use a-z and 0-9
 # must be at least 5 characters long
 # must start with a-z (only lowercase)
-export mikv_Name=YourUniqueName
+export mikv_Name=myname
 
 ### if nslookup doesn't fail to resolve, change mikv_Name
-nslookup ${mikv_Name}.azurewebsites.net
-nslookup ${mikv_Name}.vault.azure.net
-nslookup ${mikv_Name}.azurecr.io
+nslookup $mikv_Name.azurewebsites.net
+nslookup $mikv_Name.vault.azure.net
+nslookup $mikv_Name.azurecr.io
 
 ```
 
@@ -86,6 +86,8 @@ nslookup ${mikv_Name}.azurecr.io
 
 # set location
 export mikv_Location=centralus
+
+# MySecret URI
 export mikv_MySecret=https://$mikv_Name.vault.azure.net/secrets/MySecret
 
 # resource group name
@@ -104,7 +106,7 @@ Save your environment variables for ease of reuse and picking up where you left 
 ./saveenv.sh -y
 
 # at any point if your terminal environment gets cleared, you can source the file
-# you only need to remember the name of the env file (or set the $mikv_Name variable again)
+# you only need to remember the name of the env file
 source ~/YourUniqueName.env
 
 ```
