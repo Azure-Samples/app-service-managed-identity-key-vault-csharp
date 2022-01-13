@@ -41,6 +41,14 @@ This sample is an ASP.NET Core WebAPI application designed to "fork and code" wi
 - .NET Core SDK ([download](https://dotnet.microsoft.com/download))
 - Visual Studio Code (optional) ([download](https://code.visualstudio.com/download))
 
+## Open with Codespaces
+
+> You must have access to Codespaces as an individual or part of a GitHub Team or GitHub Enterprise Cloud
+
+- Click the Code button on your repo
+  - Click the Codespaces tab
+  - Click New Codespace
+
 ## Setup
 
 - Fork this repo and clone to your local machine
