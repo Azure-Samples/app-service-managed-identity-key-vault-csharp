@@ -51,23 +51,6 @@ This sample is an ASP.NET Core WebAPI application designed to "fork and code" wi
 
 ## Setup
 
-### Codespaces
-
-> Codespaces is the recommended way to run this sample application as all of the prerequisites are automatically installed.
-
-- Click on the `Code` button on the main page of this repo
-- Click on `New codespace`
-
-![New codespace](./images/codespace1.jpg "New codespace")
-
-- Choose a Machine type and click on `Create codespace`
-
-![Create codespace](./images/codespace2.jpg "Create codespace")
-
-- Once the Codespace creation is complete, a bash terminal should open automatically and be ready to use for this walk through.
-
-> Alternatively, you can fork this repo, clone to your local machine, and cd to the base directory of the repo to get started.
-
 ### Login to Azure and select subscription
 
 ```bash
