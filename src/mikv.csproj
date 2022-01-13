@@ -31,11 +31,11 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
 
-    <None Include="ascii-art.txt">
+    <None Include="files/ascii-art.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
 
-    <AdditionalFiles Include="stylecop.json" />
+    <AdditionalFiles Include="files/stylecop.json" />
 
     <None Include=".editorconfig" />
   </ItemGroup>

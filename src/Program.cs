@@ -76,7 +76,7 @@ namespace Mikv
 
         private static void DisplayAsciiArt()
         {
-            const string file = "ascii-art.txt";
+            const string file = "./files/ascii-art.txt";
 
             try
             {
