@@ -229,10 +229,10 @@ curl https://$mikv_Name.azurewebsites.net/api/secret
 ```bash
 
 # delete Key Vault
-# Key Vaults use a "soft delete" by default
 az keyvault delete -g $mikv_RG -n $mikv_Name
 
 # purge Key Vault to permanently delete
+# Key Vaults use a "soft delete" by default
 az keyvault purge -n $mikv_Name
 
 # delete resource group
