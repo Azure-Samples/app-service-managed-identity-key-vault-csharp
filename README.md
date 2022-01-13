@@ -28,8 +28,9 @@ This sample is an ASP.NET Core WebAPI application designed to "fork and code" wi
 - Securely build, deploy and run an App Service (Web App for Containers) application
 - Securely store secrets in Key Vault
 - Use Managed Identity to securely access Key Vault secrets from App Services
-- Securely build and deploy the Docker container from Container Registry
+- Use Managed Identity to securely access Docker images from Container Registry
 
+TODO: remove or update architecture diagram
 ![alt text](./docs/images/architecture.jpg "Architecture Diagram")
 
 ## Prerequisites
@@ -90,10 +91,10 @@ nslookup ${mikv_Name}.azurecr.io
 export mikv_Location=centralus
 export mikv_MySecret=https://$mikv_Name.vault.azure.net/secrets/MySecret
 
-# resource group names
+# resource group name
 export mikv_RG=${mikv_Name}-mikv-rg
 
-# create the resource groups
+# create the resource group
 az group create -n $mikv_RG -l $mikv_Location
 
 ```
@@ -175,7 +176,7 @@ az role assignment create --assignee $mikv_MI_ID --scope $mikv_ACR_ID --role acr
 ### Configure Web App
 
 # turn on container logging
- az webapp log config --docker-container-logging filesystem -g $mikv_RG -n $mikv_Name
+az webapp log config --docker-container-logging filesystem -g $mikv_RG -n $mikv_Name
 
 # inject Key Vault secret
 az webapp config appsettings set \
@@ -216,8 +217,18 @@ curl https://$mikv_Name.azurewebsites.net/api/secret
 
 ## Clean up
 
-- TODO add command to purge KV
-- add command to delete RG
+```bash
+
+# delete Key Vault
+az keyvault delete -g $mikv_RG -n $mikv_Name
+
+# purge Key Vault to permanently delete
+az keyvault purge -n $mikv_Name
+
+# delete resource group
+az group delete -n $mikv_RG
+
+```
 
 ## Contributing
 
