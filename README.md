@@ -26,8 +26,8 @@ page_type: sample
 This sample is an ASP.NET Core WebAPI application designed to "fork and code" with the following features:
 
 - Securely build, deploy and run an App Service (Web App for Containers) application
-- Use Managed Identity to securely access resources
 - Securely store secrets in Key Vault
+- Use Managed Identity to securely access Key Vault secrets from App Services
 - Securely build and deploy the Docker container from Container Registry
 
 ![alt text](./docs/images/architecture.jpg "Architecture Diagram")
@@ -35,12 +35,12 @@ This sample is an ASP.NET Core WebAPI application designed to "fork and code" wi
 ## Prerequisites
 
 - Azure subscription with permissions to create:
-  - Resource Groups, Service Principals, Keyvault, App Service, Azure Container Registry
+  - Resource Group, Keyvault, App Service, Azure Container Registry
 - Bash shell (tested on Mac, Ubuntu, Windows with WSL2)
-  - Will not work in Cloud Shell unless you have a remote dockerd
+  - Will not work in Cloud Shell
 - Azure CLI ([download](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest))
 - Docker CLI ([download](https://docs.docker.com/install/))
-- .NET Core SDK 6.0 ([download](https://dotnet.microsoft.com/download))
+- .NET Core SDK ([download](https://dotnet.microsoft.com/download))
 - Visual Studio Code (optional) ([download](https://code.visualstudio.com/download))
 
 ## Setup
@@ -48,7 +48,7 @@ This sample is an ASP.NET Core WebAPI application designed to "fork and code" wi
 - Fork this repo and clone to your local machine
   - cd to the base directory of the repo
 
-Login to Azure and select subscription
+### Login to Azure and select subscription
 
 ```bash
 
@@ -62,7 +62,7 @@ az account set -s {subscription name or Id}
 
 ```
 
-Choose a unique DNS name
+### Choose a unique DNS name
 
 ```bash
 
@@ -79,7 +79,7 @@ nslookup ${mikv_Name}.azurecr.io
 
 ```
 
-Create Resource Group
+### Create Resource Group
 
 - When experimenting with this sample, you should create a new resource group to avoid accidentally deleting resources
   - If you use an existing resource group, please make sure to apply resource locks to avoid accidentally deleting resources
@@ -88,6 +88,7 @@ Create Resource Group
 
 # set location
 export mikv_Location=centralus
+export mikv_MySecret=https://$mikv_Name.vault.azure.net/secrets/MySecret
 
 # resource group names
 export mikv_RG=${mikv_Name}-mikv-rg
@@ -111,10 +112,10 @@ source ~/{yoursameuniquename}.env
 
 ```
 
-Create Azure Key Vault
+### Create Azure Key Vault
 
 - All secrets are stored in Azure Key Vault for security
-  - This sample uses Managed Identity to access Key Vault
+  - Use System Managed Identity to access Key Vault
 
 ```bash
 
@@ -124,12 +125,9 @@ az keyvault create -g $mikv_RG -n $mikv_Name
 # add a secret
 az keyvault secret set --vault-name $mikv_Name --name "MySecret" --value "Hello from Key Vault and Managed Identity"
 
-export mikv_MySecret=https://$mikv_name.azurecr.io/secrets/MySecret
-
-
 ```
 
-Create and configure App Service (Web App for Containers)
+### Create and configure App Services
 
 > App Service will fail to start until configured properly
 
@@ -139,7 +137,7 @@ Create and configure App Service (Web App for Containers)
 az appservice plan create --sku B1 --is-linux -g $mikv_RG -n ${mikv_Name}-plan
 
 # create Web App for Containers
-# use system assigned Managed Identity
+# use System Managed Identity
 az webapp create --deployment-container-image-name nginx --assign-identity '[system]' -g $mikv_RG -n $mikv_Name -p ${mikv_Name}-plan
 
 # stop the Web App
@@ -154,7 +152,7 @@ az keyvault set-policy -n $mikv_Name --secret-permissions get list --key-permiss
 ### Configure Web App
 
 # turn on container logging
-az webapp log config --docker-container-logging filesystem -g $mikv_RG -n $mikv_Name
+# az webapp log config --docker-container-logging filesystem -g $mikv_RG -n $mikv_Name
 
 # inject Key Vault secret
 az webapp config appsettings set -g $mikv_RG -n $mikv_Name --settings MySecret="@Microsoft.KeyVault(SecretUri=$mikv_MySecret)"
@@ -162,48 +160,45 @@ az webapp config appsettings set -g $mikv_RG -n $mikv_Name --settings MySecret="
 export mikv_CONFIG=$(az webapp show -n $mikv_Name -g $mikv_RG --query id --output tsv)"/config/web"
 
 # save your mikv_* environment variables for reuse
-# make sure you are in the root of the repo
 ./saveenv.sh -y
 
 # set to use docker hub image
-az webapp config container set -n $mikv_Name -g $mikv_RG \
--i bartr/mikv:latest \
--r https://index.docker.io/v1
+az webapp config container set \
+-n $mikv_Name \
+-g $mikv_RG \
+-r https://index.docker.io/v1 \
+-i bartr/mikv:latest
 
 
 ### todo - this isn't working
 
 # configure the Web App to use Container Registry
 # get Service Principal Id and Key from Key Vault
-#az webapp config container set -n $mikv_Name -g $mikv_RG \
+#az webapp config container set \
+#-n $mikv_Name \
+#-g $mikv_RG \
 #-i $mikv_Name.azurecr.io/mikv:latest \
 #-r https://$mikv_Name.azurecr.io
 
-#az resource update --ids $mikv_CONFIG --set properties.acrUseManagedIdentityCreds=true --query properties.acrUseManagedIdentityCreds -o tsv
+#az resource update --ids $mikv_CONFIG --set properties.acrUseManagedIdentityCreds=true -o tsv
 
-
-# start the Web App
-az webapp start -g $mikv_RG -n $mikv_Name
+# restart the Web App
+az webapp restart -g $mikv_RG -n $mikv_Name
 
 # curl the health check endpoint
 # this will eventually work, but may take a minute or two
 # you may get a 403 error, if so, just run again
 
-http https://$mikv_Name.azurewebsites.net/healthz
+curl https://$mikv_Name.azurewebsites.net/healthz
 
-
-http https://$mikv_Name.azurewebsites.net/api/secret
+# curl the /api/secret endpoint
+curl https://$mikv_Name.azurewebsites.net/api/secret
 
 ```
 
-## Clean up
+## Setup Container Registry
 
-- TODO add command to purge KV
-- add command to delete RG
-
-Setup Container Registry
-
-> Create the Container Registry with admin access *disabled*
+> Create the Container Registry with admin access `disabled`
 
 ```bash
 
@@ -215,10 +210,14 @@ az acr create --sku Standard --admin-enabled false -g $mikv_RG -n $mikv_Name
 az acr login -n $mikv_Name
 
 # Build the container with az acr build
-### Make sure you are in the root folder
 az acr build -r $mikv_Name -t $mikv_Name.azurecr.io/mikv .
 
 ```
+
+## Clean up
+
+- TODO add command to purge KV
+- add command to delete RG
 
 ## Contributing
 
