@@ -1,8 +1,10 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
+using System;
 using System.Net;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace Mikv.Controllers
 {
@@ -38,7 +40,7 @@ namespace Mikv.Controllers
 
             try
             {
-                string? secret = Environment.GetEnvironmentVariable("MySecret");
+                string secret = Environment.GetEnvironmentVariable("MySecret");
 
                 if (!string.IsNullOrWhiteSpace(secret))
                 {
