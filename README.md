@@ -156,11 +156,11 @@ az acr build -r $mikv_Name -t $mikv_Name.azurecr.io/mikv .
 # create App Service plan
 az appservice plan create --sku B1 --is-linux -g $mikv_RG -n ${mikv_Name}-plan
 
-# create Web App for Containers
-# use System Managed Identity
-az webapp create --deployment-container-image-name nginx --assign-identity '[system]' -g $mikv_RG -n $mikv_Name -p ${mikv_Name}-plan
+# create Web App for Containers with System Managed Identity
+# the hello-world image is a placeholder
+az webapp create --deployment-container-image-name hello-world --assign-identity '[system]' -g $mikv_RG -n $mikv_Name -p ${mikv_Name}-plan
 
-# stop the Web App
+# stop the Web App while we update the config
 az webapp stop -g $mikv_RG -n $mikv_Name
 
 # get the Managed Identity
@@ -169,13 +169,13 @@ export mikv_MI_ID=$(az webapp identity show -g $mikv_RG -n $mikv_Name --query pr
 # grant Key Vault access to Managed Identity
 az keyvault set-policy -n $mikv_Name --secret-permissions get list --key-permissions get list --object-id $mikv_MI_ID
 
-# grant acr pull access to the managed identity
+# grant acr pull access to the Managed Identity
 az role assignment create --assignee $mikv_MI_ID --scope $mikv_ACR_ID --role acrpull -o table
 
 ### Configure Web App
 
 # turn on container logging
-# az webapp log config --docker-container-logging filesystem -g $mikv_RG -n $mikv_Name
+ az webapp log config --docker-container-logging filesystem -g $mikv_RG -n $mikv_Name
 
 # inject Key Vault secret
 az webapp config appsettings set \
@@ -183,6 +183,7 @@ az webapp config appsettings set \
 -n $mikv_Name \
 --settings MySecret="@Microsoft.KeyVault(SecretUri=$mikv_MySecret)"
 
+# get config endpoint
 export mikv_CONFIG=$(az webapp show -n $mikv_Name -g $mikv_RG --query id --output tsv)"/config/web"
 
 # save your mikv_* environment variables for reuse
@@ -196,6 +197,7 @@ az webapp config container set \
 -r https://$mikv_Name.azurecr.io \
 -i $mikv_Name.azurecr.io/mikv:latest
 
+# use Managed Identity to connect to ACR
 az resource update --ids $mikv_CONFIG --set properties.acrUseManagedIdentityCreds=true -o table
 
 # start the Web App
