@@ -1,11 +1,10 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using System.Globalization;
 using System.Reflection;
-using System;
 using System.Text;
 
+// check PORT env var
 string? p = Environment.GetEnvironmentVariable("PORT");
 
 if (string.IsNullOrWhiteSpace(p))
@@ -14,8 +13,19 @@ if (string.IsNullOrWhiteSpace(p))
     Environment.SetEnvironmentVariable("PORT", p);
 }
 
-// pass the port
-args = new string[] { "--urls", $"http://*:{p}/" };
+// pass --urls to builder
+if (args == null)
+{
+    args = new string[] { "--urls", $"http://*:{p}/" };
+}
+else
+{
+    // append if not passed
+    if (!args.Contains("--urls"))
+    {
+        args = args.Append("--urls").Append($"http://*:{p}/").ToArray();
+    }
+}
 
 var builder = WebApplication.CreateBuilder(args);
 
