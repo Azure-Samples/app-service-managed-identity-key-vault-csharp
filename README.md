@@ -25,28 +25,28 @@ page_type: sample
 
 This sample is an ASP.NET Core WebAPI application designed to "fork and code" with the following features:
 
-* Securely build, deploy and run an App Service (Web App for Containers) application
-* Use Managed Identity to securely access resources
-* Securely store secrets in Key Vault
-* Securely build and deploy the Docker container from Container Registry
+- Securely build, deploy and run an App Service (Web App for Containers) application
+- Use Managed Identity to securely access resources
+- Securely store secrets in Key Vault
+- Securely build and deploy the Docker container from Container Registry
 
 ![alt text](./docs/images/architecture.jpg "Architecture Diagram")
 
 ## Prerequisites
 
-* Azure subscription with permissions to create:
-  * Resource Groups, Service Principals, Keyvault, App Service, Azure Container Registry
-* Bash shell (tested on Mac, Ubuntu, Windows with WSL2)
-  * Will not work in Cloud Shell unless you have a remote dockerd
-* Azure CLI ([download](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest))
-* Docker CLI ([download](https://docs.docker.com/install/))
-* .NET Core SDK 6.0 ([download](https://dotnet.microsoft.com/download))
-* Visual Studio Code (optional) ([download](https://code.visualstudio.com/download))
+- Azure subscription with permissions to create:
+  - Resource Groups, Service Principals, Keyvault, App Service, Azure Container Registry
+- Bash shell (tested on Mac, Ubuntu, Windows with WSL2)
+  - Will not work in Cloud Shell unless you have a remote dockerd
+- Azure CLI ([download](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest))
+- Docker CLI ([download](https://docs.docker.com/install/))
+- .NET Core SDK 6.0 ([download](https://dotnet.microsoft.com/download))
+- Visual Studio Code (optional) ([download](https://code.visualstudio.com/download))
 
 ## Setup
 
-* Fork this repo and clone to your local machine
-  * cd to the base directory of the repo
+- Fork this repo and clone to your local machine
+  - cd to the base directory of the repo
 
 Login to Azure and select subscription
 
@@ -81,8 +81,8 @@ nslookup ${mikv_Name}.azurecr.io
 
 Create Resource Group
 
-* When experimenting with this sample, you should create a new resource group to avoid accidentally deleting resources
-  * If you use an existing resource group, please make sure to apply resource locks to avoid accidentally deleting resources
+- When experimenting with this sample, you should create a new resource group to avoid accidentally deleting resources
+  - If you use an existing resource group, please make sure to apply resource locks to avoid accidentally deleting resources
   
 ```bash
 
@@ -113,8 +113,8 @@ source ~/{yoursameuniquename}.env
 
 Create Azure Key Vault
 
-* All secrets are stored in Azure Key Vault for security
-  * This sample uses Managed Identity to access Key Vault
+- All secrets are stored in Azure Key Vault for security
+  - This sample uses Managed Identity to access Key Vault
 
 ```bash
 
@@ -122,7 +122,10 @@ Create Azure Key Vault
 az keyvault create -g $mikv_RG -n $mikv_Name
 
 # add a secret
-export mikv_MySecret=$(az keyvault secret set --vault-name $mikv_Name --name "MySecret" --value "Hello from Key Vault and Managed Identity" --query id -o tsv)
+az keyvault secret set --vault-name $mikv_Name --name "MySecret" --value "Hello from Key Vault and Managed Identity"
+
+export mikv_MySecret=https://$mikv_name.azurecr.io/secrets/MySecret
+
 
 ```
 
@@ -193,9 +196,14 @@ http https://$mikv_Name.azurewebsites.net/api/secret
 
 ```
 
+## Clean up
+
+- TODO add command to purge KV
+- add command to delete RG
+
 Setup Container Registry
 
-* Create the Container Registry with admin access *disabled*
+> Create the Container Registry with admin access *disabled*
 
 ```bash
 
