@@ -33,34 +33,32 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+//builder.Services.AddEndpointsApiExplorer();
+//builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// handle /version
+// handle default doc
 app.Use(async (context, next) =>
 {
-    // matches /version
-    if (context.Request.Path.Value == "/version")
-    {
-        // return the version info
-        context.Response.ContentType = "text/plain";
+    string path = context.Request.Path.HasValue ? context.Request.Path.Value.ToLowerInvariant() : string.Empty;
 
-        if (Attribute.GetCustomAttribute(Assembly.GetExecutingAssembly(), typeof(AssemblyInformationalVersionAttribute)) is AssemblyInformationalVersionAttribute v)
-        {
-            await context.Response.Body.WriteAsync(Encoding.UTF8.GetBytes(v.InformationalVersion)).ConfigureAwait(false);
-        }
+    // matches / /index.* /default.*
+    if (path == "/" || path.StartsWith("/index.") || path.StartsWith("/default."))
+    {
+        // return the message
+        context.Response.ContentType = "text/plain";
+        await context.Response.Body.WriteAsync(Encoding.UTF8.GetBytes("Under construction ...")).ConfigureAwait(false);
     }
     else
     {
-        // not a match, so call next middleware handler
+        // not a match, so call next handler
         await next().ConfigureAwait(false);
     }
 });
 
-app.UseSwagger();
-app.UseSwaggerUI();
+//app.UseSwagger();
+//app.UseSwaggerUI();
 
 app.MapControllers();
 
