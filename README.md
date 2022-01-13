@@ -126,7 +126,7 @@ source ~/YourUniqueName.env
 
 ```bash
 
-## Create the Key Vault
+## create the Key Vault
 az keyvault create -g $mikv_RG -n $mikv_Name
 
 # add a secret
@@ -149,12 +149,12 @@ az acr create --sku Standard --admin-enabled false -g $mikv_RG -n $mikv_Name
 # get the ACR_ID
 export mikv_ACR_ID=$(az acr show -g $mikv_RG -n $mikv_Name --query id --output tsv)
 
-# Login to ACR
-# If you get an error that the login server isn't available,
+# login to ACR
+# if you get an error that the login server isn't available,
 #   it's a DNS issue that will resolve in a minute or two, just retry
 az acr login -n $mikv_Name
 
-# Build the mikv container
+# build the mikv container
 az acr build -r $mikv_Name -t $mikv_Name.azurecr.io/mikv .
 
 ```
