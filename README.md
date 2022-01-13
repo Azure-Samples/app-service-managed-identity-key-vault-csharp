@@ -70,7 +70,7 @@ az account set -s {subscription name or Id}
 # do not include punctuation - only use a-z and 0-9
 # must be at least 5 characters long
 # must start with a-z (only lowercase)
-export mikv_Name=youruniquename
+export mikv_Name=YourUniqueName
 
 ### if nslookup doesn't fail to resolve, change mikv_Name
 nslookup ${mikv_Name}.azurewebsites.net
@@ -103,12 +103,11 @@ Save your environment variables for ease of reuse and picking up where you left 
 ```bash
 
 # run the saveenv.sh script at any time to save mikv_* variables to ~/${mikv_Name}.env
-# make sure you are in the root of the repo
-./saveenv.sh
+./saveenv.sh -y
 
 # at any point if your terminal environment gets cleared, you can source the file
 # you only need to remember the name of the env file (or set the $mikv_Name variable again)
-source ~/{yoursameuniquename}.env
+source ~/YourUniqueName.env
 
 ```
 
@@ -119,11 +118,32 @@ source ~/{yoursameuniquename}.env
 
 ```bash
 
-## Create the Key Vault and add secrets
+## Create the Key Vault
 az keyvault create -g $mikv_RG -n $mikv_Name
 
 # add a secret
 az keyvault secret set --vault-name $mikv_Name --name "MySecret" --value "Hello from Key Vault and Managed Identity"
+
+```
+
+### Create Container Registry
+
+> Create the Container Registry with admin access `disabled`
+
+```bash
+
+# create the ACR
+az acr create --sku Standard --admin-enabled false -g $mikv_RG -n $mikv_Name
+
+# get the ACR_ID
+export mikv_ACR_ID=$(az acr show -g $mikv_RG -n $mikv_Name --query id --output tsv)
+
+# Login to ACR
+# If you get an error that the login server isn't available, it's a DNS issue that will resolve in a minute or two, just retry
+az acr login -n $mikv_Name
+
+# Build the container with az acr build
+az acr build -r $mikv_Name -t $mikv_Name.azurecr.io/mikv .
 
 ```
 
@@ -144,10 +164,13 @@ az webapp create --deployment-container-image-name nginx --assign-identity '[sys
 az webapp stop -g $mikv_RG -n $mikv_Name
 
 # get the Managed Identity
-export mikv_MSI_ID=$(az webapp identity show -g $mikv_RG -n $mikv_Name --query principalId -o tsv)
+export mikv_MI_ID=$(az webapp identity show -g $mikv_RG -n $mikv_Name --query principalId -o tsv)
 
 # grant Key Vault access to Managed Identity
-az keyvault set-policy -n $mikv_Name --secret-permissions get list --key-permissions get list --object-id $mikv_MSI_ID
+az keyvault set-policy -n $mikv_Name --secret-permissions get list --key-permissions get list --object-id $mikv_MI_ID
+
+# grant acr pull access to the managed identity
+az role assignment create --assignee $mikv_MI_ID --scope $mikv_ACR_ID --role acrpull -o table
 
 ### Configure Web App
 
@@ -155,35 +178,28 @@ az keyvault set-policy -n $mikv_Name --secret-permissions get list --key-permiss
 # az webapp log config --docker-container-logging filesystem -g $mikv_RG -n $mikv_Name
 
 # inject Key Vault secret
-az webapp config appsettings set -g $mikv_RG -n $mikv_Name --settings MySecret="@Microsoft.KeyVault(SecretUri=$mikv_MySecret)"
+az webapp config appsettings set \
+-g $mikv_RG \
+-n $mikv_Name \
+--settings MySecret="@Microsoft.KeyVault(SecretUri=$mikv_MySecret)"
 
 export mikv_CONFIG=$(az webapp show -n $mikv_Name -g $mikv_RG --query id --output tsv)"/config/web"
 
 # save your mikv_* environment variables for reuse
 ./saveenv.sh -y
 
-# set to use docker hub image
+# configure the Web App to use Azure Container Registry with Managed Identity
+# ignore the warning message - the next command fixes that
 az webapp config container set \
 -n $mikv_Name \
 -g $mikv_RG \
--r https://index.docker.io/v1 \
--i bartr/mikv:latest
+-r https://$mikv_Name.azurecr.io \
+-i $mikv_Name.azurecr.io/mikv:latest
 
+az resource update --ids $mikv_CONFIG --set properties.acrUseManagedIdentityCreds=true -o table
 
-### todo - this isn't working
-
-# configure the Web App to use Container Registry
-# get Service Principal Id and Key from Key Vault
-#az webapp config container set \
-#-n $mikv_Name \
-#-g $mikv_RG \
-#-i $mikv_Name.azurecr.io/mikv:latest \
-#-r https://$mikv_Name.azurecr.io
-
-#az resource update --ids $mikv_CONFIG --set properties.acrUseManagedIdentityCreds=true -o tsv
-
-# restart the Web App
-az webapp restart -g $mikv_RG -n $mikv_Name
+# start the Web App
+az webapp start -g $mikv_RG -n $mikv_Name
 
 # curl the health check endpoint
 # this will eventually work, but may take a minute or two
@@ -193,24 +209,6 @@ curl https://$mikv_Name.azurewebsites.net/healthz
 
 # curl the /api/secret endpoint
 curl https://$mikv_Name.azurewebsites.net/api/secret
-
-```
-
-## Setup Container Registry
-
-> Create the Container Registry with admin access `disabled`
-
-```bash
-
-# create the ACR
-az acr create --sku Standard --admin-enabled false -g $mikv_RG -n $mikv_Name
-
-# Login to ACR
-# If you get an error that the login server isn't available, it's a DNS issue that will resolve in a minute or two, just retry
-az acr login -n $mikv_Name
-
-# Build the container with az acr build
-az acr build -r $mikv_Name -t $mikv_Name.azurecr.io/mikv .
 
 ```
 
