@@ -30,9 +30,6 @@ This sample is an ASP.NET Core WebAPI application designed to "fork and code" wi
 - Use Managed Identity to securely access Key Vault secrets from App Services
 - Use Managed Identity to securely access Docker images from Container Registry
 
-TODO: remove or update architecture diagram
-![alt text](./docs/images/architecture.jpg "Architecture Diagram")
-
 ## Prerequisites
 
 - Azure subscription with permissions to create:
@@ -58,7 +55,7 @@ az login
 # show your Azure accounts
 az account list -o table
 
-# select the Azure account
+# select the Azure account (if necessary)
 az account set -s {subscription name or Id}
 
 ```
@@ -92,7 +89,7 @@ export mikv_Location=centralus
 export mikv_MySecret=https://$mikv_Name.vault.azure.net/secrets/MySecret
 
 # resource group name
-export mikv_RG=${mikv_Name}-mikv-rg
+export mikv_RG=${mikv_Name}-rg
 
 # create the resource group
 az group create -n $mikv_RG -l $mikv_Location
@@ -123,7 +120,10 @@ source ~/YourUniqueName.env
 az keyvault create -g $mikv_RG -n $mikv_Name
 
 # add a secret
-az keyvault secret set --vault-name $mikv_Name --name "MySecret" --value "Hello from Key Vault and Managed Identity"
+az keyvault secret set \
+  --vault-name $mikv_Name \
+  --name "MySecret" \
+  --value "Hello from Key Vault and Managed Identity"
 
 ```
 
@@ -159,7 +159,12 @@ az appservice plan create --sku B1 --is-linux -g $mikv_RG -n ${mikv_Name}-plan
 
 # create Web App for Containers with System Managed Identity
 # the hello-world image is a placeholder
-az webapp create --deployment-container-image-name hello-world --assign-identity '[system]' -g $mikv_RG -n $mikv_Name -p ${mikv_Name}-plan
+az webapp create \
+  --deployment-container-image-name hello-world \
+  --assign-identity '[system]' \
+  -g $mikv_RG \
+  -n $mikv_Name \
+  -p ${mikv_Name}-plan
 
 # stop the Web App while we update the config
 az webapp stop -g $mikv_RG -n $mikv_Name
@@ -168,7 +173,11 @@ az webapp stop -g $mikv_RG -n $mikv_Name
 export mikv_MI_ID=$(az webapp identity show -g $mikv_RG -n $mikv_Name --query principalId -o tsv)
 
 # grant Key Vault access to Managed Identity
-az keyvault set-policy -n $mikv_Name --secret-permissions get list --key-permissions get list --object-id $mikv_MI_ID
+az keyvault set-policy \
+  -n $mikv_Name \
+  --secret-permissions get list \
+  --key-permissions get list \
+  --object-id $mikv_MI_ID
 
 # grant acr pull access to the Managed Identity
 az role assignment create --assignee $mikv_MI_ID --scope $mikv_ACR_ID --role acrpull -o table
@@ -180,9 +189,9 @@ az webapp log config --docker-container-logging filesystem -g $mikv_RG -n $mikv_
 
 # inject Key Vault secret
 az webapp config appsettings set \
--g $mikv_RG \
--n $mikv_Name \
---settings MySecret="@Microsoft.KeyVault(SecretUri=$mikv_MySecret)"
+  -g $mikv_RG \
+  -n $mikv_Name \
+  --settings MySecret="@Microsoft.KeyVault(SecretUri=$mikv_MySecret)"
 
 # get config endpoint
 export mikv_CONFIG=$(az webapp show -n $mikv_Name -g $mikv_RG --query id --output tsv)"/config/web"
@@ -193,10 +202,10 @@ export mikv_CONFIG=$(az webapp show -n $mikv_Name -g $mikv_RG --query id --outpu
 # configure the Web App to use Azure Container Registry with Managed Identity
 # ignore the warning message - the next command fixes that
 az webapp config container set \
--n $mikv_Name \
--g $mikv_RG \
--r https://$mikv_Name.azurecr.io \
--i $mikv_Name.azurecr.io/mikv:latest
+  -n $mikv_Name \
+  -g $mikv_RG \
+  -r https://$mikv_Name.azurecr.io \
+  -i $mikv_Name.azurecr.io/mikv:latest
 
 # use Managed Identity to connect to ACR
 az resource update --ids $mikv_CONFIG --set properties.acrUseManagedIdentityCreds=true -o table
@@ -215,11 +224,12 @@ curl https://$mikv_Name.azurewebsites.net/api/secret
 
 ```
 
-## Clean up
+### Clean up
 
 ```bash
 
 # delete Key Vault
+# Key Vaults use a "soft delete" by default
 az keyvault delete -g $mikv_RG -n $mikv_Name
 
 # purge Key Vault to permanently delete
