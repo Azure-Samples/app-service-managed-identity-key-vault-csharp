@@ -51,6 +51,9 @@ This sample is an ASP.NET Core WebAPI application designed to "fork and code" wi
 
 ## Setup
 
+- Fork this repo and clone to your local machine (unless using Codespaces)
+  - cd to the base directory of the repo
+
 ### Login to Azure and select subscription
 
 ```bash
