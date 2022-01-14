@@ -34,8 +34,7 @@ This sample is an ASP.NET Core WebAPI application designed to "fork and code" wi
 
 - Azure subscription with permissions to create:
   - Resource Group, Keyvault, App Service, Azure Container Registry
-- Bash shell (tested on Mac, Ubuntu, Windows with WSL2)
-  - Will not work in Cloud Shell
+- Bash shell (tested on Mac, Ubuntu, WSL2 and Cloud Shell)
 - Azure CLI ([download](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest))
 - Docker CLI ([download](https://docs.docker.com/install/))
 - .NET Core SDK ([download](https://dotnet.microsoft.com/download))
@@ -152,7 +151,7 @@ export MIKV_ACR_ID=$(az acr show -g $MIKV_RG -n $MIKV_NAME --query id --output t
 # login to ACR
 # if you get an error that the login server isn't available,
 #   it's a DNS issue that will resolve in a minute or two, just retry
-az acr login -n $MIKV_NAME
+az acr login -n $MIKV_NAME --expose-token
 
 # build the mikv container
 az acr build -r $MIKV_NAME -t $MIKV_NAME.azurecr.io/mikv .
