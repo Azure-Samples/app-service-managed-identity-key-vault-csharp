@@ -26,11 +26,11 @@ namespace Mikv.Controllers
         }
 
         /// <summary>
-        /// Returns the secret injected from Key Vault
+        /// Returns the Key Vault secret referenced in Application Settings
         /// </summary>
         /// <param name="key">key of secret (env var)</param>
         /// <returns>text/plain</returns>
-        /// <remarks>Returns the secret stored in Key Vault</remarks>
+        /// <remarks>Returns the Key Vault secret referenced in Application Settings</remarks>
         /// <response code="200">returns the secret as text/plain</response>
         [HttpGet("{key}")]
         [Produces("text/plain")]

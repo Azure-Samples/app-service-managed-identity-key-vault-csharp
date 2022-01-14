@@ -27,6 +27,7 @@ This sample is an ASP.NET Core WebAPI application designed to "fork and code" wi
 
 - Securely build, deploy and run an App Service (Web App for Containers) application
 - Securely store secrets in Key Vault
+- Securely use Key Vault secrets as Application Settings values with [Key Vault reference strings](https://docs.microsoft.com/en-us/azure/app-service/app-service-key-vault-references#reference-syntax)
 - Use Managed Identity to securely access Key Vault secrets from App Services
 - Use Managed Identity to securely access Docker images from Container Registry
 
