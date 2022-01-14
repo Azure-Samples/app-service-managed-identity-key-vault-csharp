@@ -270,7 +270,7 @@ az keyvault delete -g $MIKV_RG -n $MIKV_NAME
 az keyvault purge -n $MIKV_NAME
 
 # delete resource group
-az group delete -n $MIKV_RG
+az group delete -n $MIKV_RG --no-wait
 
 ```
 
