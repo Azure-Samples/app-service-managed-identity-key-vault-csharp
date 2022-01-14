@@ -28,28 +28,30 @@ namespace Mikv.Controllers
         /// <summary>
         /// Returns the secret injected from Key Vault
         /// </summary>
+        /// <param name="key">key of secret (env var)</param>
         /// <returns>text/plain</returns>
         /// <remarks>Returns the secret stored in Key Vault</remarks>
         /// <response code="200">returns the secret as text/plain</response>
-        [HttpGet]
+        [HttpGet("{key}")]
         [Produces("text/plain")]
-        public IActionResult GetSecret()
+        public IActionResult GetSecret([FromRoute] string key)
         {
             // log the request
             logger.LogInformation("GetSecret");
 
             try
             {
-                string secret = Environment.GetEnvironmentVariable("MySecret");
+                if (!string.IsNullOrWhiteSpace(key))
+                {
+                    string secret = Environment.GetEnvironmentVariable(key.Trim());
 
-                if (!string.IsNullOrWhiteSpace(secret))
-                {
-                    return Ok(secret);
+                    if (!string.IsNullOrWhiteSpace(secret))
+                    {
+                        return Ok(secret);
+                    }
                 }
-                else
-                {
-                    return NotFound();
-                }
+
+                return NotFound();
             }
             catch (Exception ex)
             {
