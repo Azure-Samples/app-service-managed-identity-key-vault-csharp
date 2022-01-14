@@ -1,30 +1,30 @@
 #!/bin/bash
 
-if [ -z "$mikv_Name" ]
+if [ -z "$MIKV_NAME" ]
 then
-  echo "Please set mikv_Name before running this script"
+  echo "Please set MIKV_NAME before running this script"
 else
-  if [ -f ~/${mikv_Name}.env ]
+  if [ -f ~/${MIKV_NAME}.env ]
   then
     if [ "$#" = 0 ] || [ $1 != "-y" ]
     then
-      read -p "~/${mikv_Name}.env already exists. Do you want to remove? (y/n) " response
+      read -p "~/${MIKV_NAME}.env already exists. Do you want to remove? (y/n) " response
 
       if ! [[ $response =~ [yY] ]]
       then
-        echo "Please move or delete ~/${mikv_Name}.env and rerun the script."
+        echo "Please move or delete ~/${MIKV_NAME}.env and rerun the script."
         exit 1;
       fi
     fi
   fi
 
-  echo '#!/bin/bash' > ~/${mikv_Name}.env
-  echo '' >> ~/${mikv_Name}.env
+  echo '#!/bin/bash' > ~/${MIKV_NAME}.env
+  echo '' >> ~/${MIKV_NAME}.env
 
-  for var in $(env | grep mikv_ | sort)
+  for var in $(env | grep MIKV_ | sort)
   do
-    echo "export ${var}" >> ~/${mikv_Name}.env
+    echo "export ${var}" >> ~/${MIKV_NAME}.env
   done
 
-  cat ~/${mikv_Name}.env
+  cat ~/${MIKV_NAME}.env
 fi

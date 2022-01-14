@@ -76,12 +76,12 @@ az account set -s {subscription name or Id}
 # do not include punctuation - only use a-z and 0-9
 # must be at least 5 characters long
 # must start with a-z (only lowercase)
-export mikv_Name=myname
+export MIKV_NAME=myname
 
-### if nslookup doesn't fail to resolve, change mikv_Name
-nslookup $mikv_Name.azurewebsites.net
-nslookup $mikv_Name.vault.azure.net
-nslookup $mikv_Name.azurecr.io
+### if nslookup doesn't fail to resolve, change MIKV_NAME
+nslookup $MIKV_NAME.azurewebsites.net
+nslookup $MIKV_NAME.vault.azure.net
+nslookup $MIKV_NAME.azurecr.io
 
 ```
 
@@ -93,16 +93,16 @@ nslookup $mikv_Name.azurecr.io
 ```bash
 
 # set location
-export mikv_Location=centralus
+export MIKV_LOCATION=centralus
 
 # MySecret URI
-export mikv_MySecret=https://$mikv_Name.vault.azure.net/secrets/MySecret
+export MIKV_SECRET_URI=https://$MIKV_NAME.vault.azure.net/secrets/MySecret
 
 # resource group name
-export mikv_RG=${mikv_Name}-rg
+export MIKV_RG=${MIKV_NAME}-rg
 
 # create the resource group
-az group create -n $mikv_RG -l $mikv_Location
+az group create -n $MIKV_RG -l $MIKV_LOCATION
 
 ```
 
@@ -110,7 +110,7 @@ Save your environment variables for ease of reuse and picking up where you left 
 
 ```bash
 
-# run the saveenv.sh script at any time to save mikv_* variables to ~/${mikv_Name}.env
+# run the saveenv.sh script at any time to save MIKV_* variables to ~/${MIKV_NAME}.env
 ./saveenv.sh -y
 
 # at any point if your terminal environment gets cleared, you can source the file
@@ -127,11 +127,11 @@ source ~/YourUniqueName.env
 ```bash
 
 ## create the Key Vault
-az keyvault create -g $mikv_RG -n $mikv_Name
+az keyvault create -g $MIKV_RG -n $MIKV_NAME
 
 # add a secret
 az keyvault secret set \
-  --vault-name $mikv_Name \
+  --vault-name $MIKV_NAME \
   --name "MySecret" \
   --value "Hello from Key Vault and Managed Identity"
 
@@ -144,18 +144,18 @@ az keyvault secret set \
 ```bash
 
 # create the ACR
-az acr create --sku Standard --admin-enabled false -g $mikv_RG -n $mikv_Name
+az acr create --sku Standard --admin-enabled false -g $MIKV_RG -n $MIKV_NAME
 
 # get the ACR_ID
-export mikv_ACR_ID=$(az acr show -g $mikv_RG -n $mikv_Name --query id --output tsv)
+export MIKV_ACR_ID=$(az acr show -g $MIKV_RG -n $MIKV_NAME --query id --output tsv)
 
 # login to ACR
 # if you get an error that the login server isn't available,
 #   it's a DNS issue that will resolve in a minute or two, just retry
-az acr login -n $mikv_Name
+az acr login -n $MIKV_NAME
 
 # build the mikv container
-az acr build -r $mikv_Name -t $mikv_Name.azurecr.io/mikv .
+az acr build -r $MIKV_NAME -t $MIKV_NAME.azurecr.io/mikv .
 
 ```
 
@@ -166,19 +166,19 @@ az acr build -r $mikv_Name -t $mikv_Name.azurecr.io/mikv .
 ```bash
 
 # create App Service plan
-az appservice plan create --sku B1 --is-linux -g $mikv_RG -n ${mikv_Name}-plan
+az appservice plan create --sku B1 --is-linux -g $MIKV_RG -n ${MIKV_NAME}-plan
 
 # create Web App for Containers with System Managed Identity
 # the hello-world image is a placeholder
 az webapp create \
   --deployment-container-image-name hello-world \
   --assign-identity '[system]' \
-  -g $mikv_RG \
-  -n $mikv_Name \
-  -p ${mikv_Name}-plan
+  -g $MIKV_RG \
+  -n $MIKV_NAME \
+  -p ${MIKV_NAME}-plan
 
 # stop the Web App while we update the config
-az webapp stop -g $mikv_RG -n $mikv_Name
+az webapp stop -g $MIKV_RG -n $MIKV_NAME
 
 ```
 
@@ -187,19 +187,19 @@ az webapp stop -g $mikv_RG -n $mikv_Name
 ```bash
 
 # get the App Service Managed Identity
-export mikv_MI_ID=$(az webapp identity show -g $mikv_RG -n $mikv_Name --query principalId -o tsv)
+export MIKV_MI_ID=$(az webapp identity show -g $MIKV_RG -n $MIKV_NAME --query principalId -o tsv)
 
 # grant Key Vault access to Managed Identity
 az keyvault set-policy \
-  -n $mikv_Name \
+  -n $MIKV_NAME \
   --secret-permissions get list \
   --key-permissions get list \
-  --object-id $mikv_MI_ID
+  --object-id $MIKV_MI_ID
 
 # grant acr pull access to the Managed Identity
 az role assignment create \
-  --assignee $mikv_MI_ID \
-  --scope $mikv_ACR_ID \
+  --assignee $MIKV_MI_ID \
+  --scope $MIKV_ACR_ID \
   --role acrpull
 
 ```
@@ -211,36 +211,36 @@ az role assignment create \
 # turn on container logging
 az webapp log config \
   --docker-container-logging filesystem \
-  -g $mikv_RG \
-  -n $mikv_Name
+  -g $MIKV_RG \
+  -n $MIKV_NAME
 
 # inject Key Vault secret
 az webapp config appsettings set \
-  -g $mikv_RG \
-  -n $mikv_Name \
-  --settings MySecret="@Microsoft.KeyVault(SecretUri=$mikv_MySecret)"
+  -g $MIKV_RG \
+  -n $MIKV_NAME \
+  --settings MySecret="@Microsoft.KeyVault(SecretUri=$MIKV_SECRET_URI)"
 
 # get config endpoint
-export mikv_CONFIG=$(az webapp show -n $mikv_Name -g $mikv_RG --query id --output tsv)"/config/web"
+export MIKV_CONFIG=$(az webapp show -n $MIKV_NAME -g $MIKV_RG --query id --output tsv)"/config/web"
 
-# save your mikv_* environment variables for reuse
+# save your MIKV_* environment variables for reuse
 ./saveenv.sh -y
 
 # configure the Web App to use Azure Container Registry with Managed Identity
 echo "ignore the warning message - the next command fixes the warning"
 az webapp config container set \
-  -n $mikv_Name \
-  -g $mikv_RG \
-  -r https://$mikv_Name.azurecr.io \
-  -i $mikv_Name.azurecr.io/mikv:latest
+  -n $MIKV_NAME \
+  -g $MIKV_RG \
+  -r https://$MIKV_NAME.azurecr.io \
+  -i $MIKV_NAME.azurecr.io/mikv:latest
 
 # use Managed Identity to connect to ACR
 az resource update \
-  --ids $mikv_CONFIG \
+  --ids $MIKV_CONFIG \
   --set properties.acrUseManagedIdentityCreds=true
 
 # start the Web App
-az webapp start -g $mikv_RG -n $mikv_Name
+az webapp start -g $MIKV_RG -n $MIKV_NAME
 
 ```
 
@@ -252,10 +252,10 @@ az webapp start -g $mikv_RG -n $mikv_Name
 # you may get a 403 error, if so, just run the curl command again
 
 # curl the health check endpoint
-curl https://$mikv_Name.azurewebsites.net/healthz
+curl https://$MIKV_NAME.azurewebsites.net/healthz
 
 # curl the /api/secret endpoint
-curl https://$mikv_Name.azurewebsites.net/api/secret
+curl https://$MIKV_NAME.azurewebsites.net/api/secret/MySecret
 
 ```
 
@@ -264,14 +264,14 @@ curl https://$mikv_Name.azurewebsites.net/api/secret
 ```bash
 
 # delete Key Vault
-az keyvault delete -g $mikv_RG -n $mikv_Name
+az keyvault delete -g $MIKV_RG -n $MIKV_NAME
 
 # purge Key Vault to permanently delete
 # Key Vaults use a "soft delete" by default
-az keyvault purge -n $mikv_Name
+az keyvault purge -n $MIKV_NAME
 
 # delete resource group
-az group delete -n $mikv_RG
+az group delete -n $MIKV_RG
 
 ```
 
