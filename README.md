@@ -25,31 +25,36 @@ page_type: sample
 
 This sample is an ASP.NET Core WebAPI application designed to "fork and code" with the following features:
 
-* Securely build, deploy and run an App Service (Web App for Containers) application
-* Use Managed Identity to securely access resources
-* Securely store secrets in Key Vault
-* Securely build and deploy the Docker container from Container Registry or Azure DevOps
-* Automatically send telemetry and logs to Azure Monitor
-
-![alt text](./docs/images/architecture.jpg "Architecture Diagram")
+- Securely build, deploy and run an App Service (Web App for Containers) application
+- Securely store secrets in Key Vault
+- Securely use Key Vault secrets as Application Settings values with [Key Vault reference strings](https://docs.microsoft.com/en-us/azure/app-service/app-service-key-vault-references#reference-syntax)
+- Use Managed Identity to securely access Key Vault secrets from App Services
+- Use Managed Identity to securely access Docker images from Container Registry
 
 ## Prerequisites
 
-* Azure subscription with permissions to create:
-  * Resource Groups, Service Principals, Keyvault, App Service, Azure Container Registry, Azure Monitor
-* Bash shell (tested on Mac, Ubuntu, Windows with WSL2)
-  * Will not work in Cloud Shell unless you have a remote dockerd
-* Azure CLI 2.0.72+ ([download](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest))
-* Docker CLI ([download](https://docs.docker.com/install/))
-* .NET Core SDK 2.2 ([download](https://dotnet.microsoft.com/download))
-* Visual Studio Code (optional) ([download](https://code.visualstudio.com/download))
+- Azure subscription with permissions to create:
+  - Resource Group, Keyvault, App Service, Azure Container Registry
+- Bash shell (tested on Mac, Ubuntu, WSL2 and Cloud Shell)
+- Azure CLI ([download](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest))
+- Docker CLI ([download](https://docs.docker.com/install/))
+- .NET Core SDK ([download](https://dotnet.microsoft.com/download))
+- Visual Studio Code (optional) ([download](https://code.visualstudio.com/download))
+
+## Open with Codespaces
+
+> You must have access to Codespaces as an individual or part of a GitHub Team or GitHub Enterprise Cloud
+
+- Click the Code button on your repo
+  - Click the Codespaces tab
+  - Click New Codespace
 
 ## Setup
 
-* Fork this repo and clone to your local machine
-  * cd to the base directory of the repo
+- Fork this repo and clone to your local machine (unless using Codespaces)
+  - cd to the base directory of the repo
 
-Login to Azure and select subscription
+### Login to Azure and select subscription
 
 ```bash
 
@@ -58,12 +63,12 @@ az login
 # show your Azure accounts
 az account list -o table
 
-# select the Azure account
+# select the Azure account (if necessary)
 az account set -s {subscription name or Id}
 
 ```
 
-Choose a unique DNS name
+### Choose a unique DNS name
 
 ```bash
 
@@ -71,36 +76,33 @@ Choose a unique DNS name
 # do not include punctuation - only use a-z and 0-9
 # must be at least 5 characters long
 # must start with a-z (only lowercase)
-export mikv_Name="youruniquename"
+export MIKV_NAME=myname
 
-### if nslookup doesn't fail to resolve, change mikv_Name
-nslookup ${mikv_Name}.azurewebsites.net
-nslookup ${mikv_Name}.vault.azure.net
-nslookup ${mikv_Name}.azurecr.io
+### if nslookup doesn't fail to resolve, change MIKV_NAME
+nslookup $MIKV_NAME.azurewebsites.net
+nslookup $MIKV_NAME.vault.azure.net
+nslookup $MIKV_NAME.azurecr.io
 
 ```
 
-Create Resource Groups
+### Create Resource Group
 
-* When experimenting with this sample, you should create new resource groups to avoid accidentally deleting resources
-  * If you use an existing resource group, please make sure to apply resource locks to avoid accidentally deleting resources
+- When experimenting with this sample, you should create a new resource group to avoid accidentally deleting resources
+  - If you use an existing resource group, please make sure to apply resource locks to avoid accidentally deleting resources
   
-* You will create 2 resource groups
-  * One for ACR
-  * One for App Service, Key Vault and Azure Monitor
-
 ```bash
 
 # set location
-export mikv_Location=centralus
+export MIKV_LOCATION=centralus
 
-# resource group names
-export mikv_ACR_RG=${mikv_Name}-rg-acr
-export mikv_App_RG=${mikv_Name}-rg-app
+# MySecret URI
+export MIKV_SECRET_URI=https://$MIKV_NAME.vault.azure.net/secrets/MySecret
 
-# create the resource groups
-az group create -n $mikv_App_RG -l $mikv_Location
-az group create -n $mikv_ACR_RG -l $mikv_Location
+# resource group name
+export MIKV_RG=${MIKV_NAME}-rg
+
+# create the resource group
+az group create -n $MIKV_RG -l $MIKV_LOCATION
 
 ```
 
@@ -108,281 +110,185 @@ Save your environment variables for ease of reuse and picking up where you left 
 
 ```bash
 
-# run the saveenv.sh script at any time to save mikv_* variables to ~/${mikv_Name}.env
-# make sure you are in the root of the repo
-./saveenv.sh
+# run the saveenv.sh script at any time to save MIKV_* variables to ~/${MIKV_NAME}.env
+./saveenv.sh -y
 
 # at any point if your terminal environment gets cleared, you can source the file
-# you only need to remember the name of the env file (or set the $mikv_Name variable again)
-source ~/{yoursameuniquename}.env
+# you only need to remember the name of the env file
+source ~/YourUniqueName.env
 
 ```
 
-Create Azure Key Vault
+### Create Azure Key Vault
 
-* All secrets are stored in Azure Key Vault for security
-  * This sample uses Managed Identity to access Key Vault
+- All secrets are stored in Azure Key Vault for security
+  - Use System Managed Identity to access Key Vault
 
 ```bash
 
-## Create the Key Vault and add secrets
-az keyvault create -g $mikv_App_RG -n $mikv_Name
+## create the Key Vault
+az keyvault create -g $MIKV_RG -n $MIKV_NAME
 
 # add a secret
-az keyvault secret set -o table --vault-name $mikv_Name --name "MySecret" --value "Hello from Key Vault and Managed Identity!"
+az keyvault secret set \
+  --vault-name $MIKV_NAME \
+  --name "MySecret" \
+  --value "Hello from Key Vault and Managed Identity"
 
 ```
 
-(Optional) In order to run the application locally, each developer will need access to the Key Vault. Since you created the Key Vault during setup, you will automatically have permission, so this step is only required for additional developers.
+### Create Azure Container Registry
 
-Use the following command to grant permissions to each developer that will need access.
-
-```bash
-# get the object id for each developer (optional)
-export dev_Object_Id=$(az ad user show --id {developer email address} --query objectId -o tsv)
-
-# grant Key Vault access to each developer (optional)
-az keyvault set-policy -n $mikv_Name --secret-permissions get list --key-permissions get list --object-id $dev_Object_Id
-
-```
-
-Run the unit tests
-
-```bash
-
-cd src/unit-tests
-
-dotnet test --logger:trx
-
-```
-
-Run the application locally
-
-```bash
-
-cd ../app
-
-# run in the background
-dotnet run $mikv_Name &
-
-# the application takes about 10 seconds to start
-# wait for the web server started message
-curl http://localhost:4120/healthz
-
-```
-
-(Alternative) Run the application as a local container
-
-
-```bash
-
-# make sure you are in the src folder
-cd ..
-
-# build the dev image
-# you may see red warnings in the build output, they are safe to ignore
-# examples: "debconf: ..." or "dpkg-preconfigure: ..."
-docker build -t mikv-dev -f Dockerfile-Dev .
-
-# run the container
-# mount your ~/.azure directory to container root/.azure directory
-docker run -d -p 4120:4120 --name mikv-dev -v ~/.azure:/root/.azure mikv-dev "dotnet" "run" "${mikv_Name}"
-
-# check the logs
-# re-run until the application started message appears
-docker logs mikv-dev
-
-```
-
-Run the integration test
-
-```bash
-
-# Health Check endpoint
-# should return 200 - Healthy
-curl localhost:4120/healthz
-
-# WebAPI endpoint
-# should return 200 - Hello from Key Vault and Managed Identity!
-curl localhost:4120/api/secret
-
-# Swagger endpoints
-# should return Swagger UI HTML
-curl -L localhost:4120/
-
-# should return json object describing API
-curl localhost:4120/swagger/mikv/swagger.json
-
-```
-
-Stop the app
-
-```bash
-
-fg
-
-# press ctl-c
-
-```
-
-(Alternative) Stop and remove the container
-
-```bash
-
-docker stop mikv-dev
-
-docker rm mikv-dev
-
-```
-
-Setup Container Registry
-
-* Create the Container Registry with admin access *disabled*
+> Create the ACR with admin access `disabled` for security
 
 ```bash
 
 # create the ACR
-az acr create --sku Standard --admin-enabled false -g $mikv_ACR_RG -n $mikv_Name
+az acr create --sku Standard --admin-enabled false -g $MIKV_RG -n $MIKV_NAME
 
-# Login to ACR
-# If you get an error that the login server isn't available, it's a DNS issue that will resolve in a minute or two, just retry
-az acr login -n $mikv_Name
+# get the ACR_ID
+export MIKV_ACR_ID=$(az acr show -g $MIKV_RG -n $MIKV_NAME --query id --output tsv)
 
-# Build the container with az acr build
-### Make sure you are in the src folder
+# login to ACR
+# if you get an error that the login server isn't available,
+#   it's a DNS issue that will resolve in a minute or two, just retry
+az acr login -n $MIKV_NAME --expose-token
 
-cd ..
-az acr build -r $mikv_Name -t $mikv_Name.azurecr.io/mikv-csharp .
-
-```
-
-Create a Service Principal for Container Registry
-
-* App Service will use this Service Principal to access Container Registry
-
-```bash
-
-# create a Service Principal
-export mikv_SP_PWD=$(az ad sp create-for-rbac -n http://${mikv_Name}-acr-sp --query password -o tsv)
-export mikv_SP_ID=$(az ad sp show --id http://${mikv_Name}-acr-sp --query appId -o tsv)
-
-# get the Container Registry Id
-export mikv_ACR_Id=$(az acr show -n $mikv_Name -g $mikv_ACR_RG --query "id" -o tsv)
-
-# assign acrpull access to Service Principal
-az role assignment create --assignee $mikv_SP_ID --scope $mikv_ACR_Id --role acrpull
-
-# add credentials to Key Vault
-az keyvault secret set -o table --vault-name $mikv_Name --name "AcrUserId" --value $mikv_SP_ID
-az keyvault secret set -o table --vault-name $mikv_Name --name "AcrPassword" --value $mikv_SP_PWD
+# build the mikv container
+az acr build -r $MIKV_NAME -t $MIKV_NAME.azurecr.io/mikv .
 
 ```
 
-Create Azure Monitor
+### Create App Service
 
-* The Application Insights extension is in preview and needs to be added to the CLI
-
-```bash
-
-# Add App Insights extension
-az extension add -n application-insights
-
-# Create App Insights
-export mikv_AppInsights_Key=$(az monitor app-insights component create -g $mikv_App_RG -l $mikv_Location -a $mikv_Name --query instrumentationKey -o tsv)
-
-# add App Insights Key to Key Vault
-az keyvault secret set -o table --vault-name $mikv_Name --name "AppInsightsKey" --value $mikv_AppInsights_Key
-
-```
-
-Create and configure App Service (Web App for Containers)
-
-* App Service will fail to start until configured properly
+> App Service will fail to start until configured properly
 
 ```bash
 
 # create App Service plan
-az appservice plan create --sku B1 --is-linux -g $mikv_App_RG -n ${mikv_Name}-plan
+az appservice plan create --sku B1 --is-linux -g $MIKV_RG -n ${MIKV_NAME}-plan
 
-# create Web App for Containers
-az webapp create --deployment-container-image-name hello-world -g $mikv_App_RG -n $mikv_Name -p ${mikv_Name}-plan
+# create Web App for Containers with System Managed Identity
+# the hello-world image is a placeholder
+az webapp create \
+  --deployment-container-image-name hello-world \
+  --assign-identity '[system]' \
+  -g $MIKV_RG \
+  -n $MIKV_NAME \
+  -p ${MIKV_NAME}-plan
 
-# assign Managed Identity
-export mikv_MSI_ID=$(az webapp identity assign -g $mikv_App_RG -n $mikv_Name --query principalId -o tsv) && echo $mikv_MSI_ID
-
-# grant Key Vault access to Managed Identity
-az keyvault set-policy -n $mikv_Name --secret-permissions get list --key-permissions get list --object-id $mikv_MSI_ID
-
-### Configure Web App
-
-# turn on CI
-az webapp config appsettings set --settings DOCKER_ENABLE_CI=true -g $mikv_App_RG -n $mikv_Name
-
-# set the Key Vault name app setting (environment variable)
-az webapp config appsettings set --settings KeyVaultName=$mikv_Name -g $mikv_App_RG -n $mikv_Name
-
-# turn on container logging
-# this will send stdout and stderr to the logs
-az webapp log config --docker-container-logging filesystem -g $mikv_App_RG -n $mikv_Name
-
-# get the Service Principal Id and Key from Key Vault
-export mikv_AcrUserId=$(az keyvault secret show --vault-name $mikv_Name --name "AcrUserId" --query id -o tsv)
-export mikv_AcrPassword=$(az keyvault secret show --vault-name $mikv_Name --name "AcrPassword" --query id -o tsv)
-
-# save your mikv_* environment variables for reuse
-# make sure you are in the root of the repo
-./saveenv.sh
-
-# configure the Web App to use Container Registry
-# get Service Principal Id and Key from Key Vault
-az webapp config container set -n $mikv_Name -g $mikv_App_RG \
--i ${mikv_Name}.azurecr.io/mikv-csharp \
--r https://${mikv_Name}.azurecr.io \
--u "@Microsoft.KeyVault(SecretUri=${mikv_AcrUserId})" \
--p "@Microsoft.KeyVault(SecretUri=${mikv_AcrPassword})"
-
-# restart the Web App
-az webapp restart -g $mikv_App_RG -n $mikv_Name
-
-# curl the health check endpoint
-# this will eventually work, but may take a minute or two
-# you may get a 403 error, if so, just run again
-
-curl https://${mikv_Name}.azurewebsites.net/healthz
+# stop the Web App while we update the config
+az webapp stop -g $MIKV_RG -n $MIKV_NAME
 
 ```
 
-Run the integration test
+### Grant access to Managed Identity
 
 ```bash
 
-# Health Check endpoint
-# should return 200 - Healthy
-curl https://${mikv_Name}.azurewebsites.net/healthz
+# get the App Service Managed Identity
+export MIKV_MI_ID=$(az webapp identity show -g $MIKV_RG -n $MIKV_NAME --query principalId -o tsv)
 
-# WebAPI endpoint
-# should return 200 - Hello from Key Vault and Managed Identity!
-curl https://${mikv_Name}.azurewebsites.net/api/secret
+# grant Key Vault access to Managed Identity
+az keyvault set-policy \
+  -n $MIKV_NAME \
+  --secret-permissions get list \
+  --key-permissions get list \
+  --object-id $MIKV_MI_ID
 
-# Swagger endpoints
-# should return Swagger UI HTML
-curl -L https://${mikv_Name}.azurewebsites.net/
+# grant acr pull access to the Managed Identity
+az role assignment create \
+  --assignee $MIKV_MI_ID \
+  --scope $MIKV_ACR_ID \
+  --role acrpull
 
-# should return json object describing API
-curl https://${mikv_Name}.azurewebsites.net/swagger/mikv/swagger.json
+```
+
+### Configure Web App
+
+```bash
+
+# turn on container logging
+az webapp log config \
+  --docker-container-logging filesystem \
+  -g $MIKV_RG \
+  -n $MIKV_NAME
+
+# inject Key Vault secret
+az webapp config appsettings set \
+  -g $MIKV_RG \
+  -n $MIKV_NAME \
+  --settings MySecret="@Microsoft.KeyVault(SecretUri=$MIKV_SECRET_URI)"
+
+# get config endpoint
+export MIKV_CONFIG=$(az webapp show -n $MIKV_NAME -g $MIKV_RG --query id --output tsv)"/config/web"
+
+# save your MIKV_* environment variables for reuse
+./saveenv.sh -y
+
+# configure the Web App to use Azure Container Registry with Managed Identity
+echo "ignore the warning message - the next command fixes the warning"
+az webapp config container set \
+  -n $MIKV_NAME \
+  -g $MIKV_RG \
+  -r https://$MIKV_NAME.azurecr.io \
+  -i $MIKV_NAME.azurecr.io/mikv:latest
+
+# use Managed Identity to connect to ACR
+az resource update \
+  --ids $MIKV_CONFIG \
+  --set properties.acrUseManagedIdentityCreds=true
+
+# start the Web App
+az webapp start -g $MIKV_RG -n $MIKV_NAME
+
+```
+
+### Check Endpoints
+
+```bash
+
+# this will eventually work, but may take up to a minute
+# you may get a 403 error, if so, just run the curl command again
+
+# curl the health check endpoint
+curl https://$MIKV_NAME.azurewebsites.net/healthz
+
+# curl the /api/secret endpoint
+curl https://$MIKV_NAME.azurewebsites.net/api/secret/MySecret
+
+```
+
+### Clean up
+
+```bash
+
+# delete Key Vault
+az keyvault delete -g $MIKV_RG -n $MIKV_NAME
+
+# purge Key Vault to permanently delete
+# Key Vaults use a "soft delete" by default
+az keyvault purge -n $MIKV_NAME
+
+# delete resource group
+az group delete -n $MIKV_RG --no-wait
 
 ```
 
 ## Contributing
 
-This project welcomes contributions and suggestions.  Most contributions require you to agree to a
-Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
-the rights to use your contribution. For details, visit [Microsoft Contributor License Agreement](https://cla.opensource.microsoft.com).
+This project welcomes contributions and suggestions. Most contributions require you to agree to a Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us the rights to use your contribution. For details, visit [Microsoft Contributor License Agreement](https://cla.opensource.microsoft.com).
 
-When you submit a pull request, a CLA bot will automatically determine whether you need to provide
-a CLA and decorate the PR appropriately (e.g., status check, comment). Simply follow the instructions
-provided by the bot. You will only need to do this once across all repos using our CLA.
+When you submit a pull request, a CLA bot will automatically determine whether you need to provide a CLA and decorate the PR appropriately (e.g., status check, comment). Simply follow the instructions provided by the bot. You will only need to do this once across all repos using our CLA.
 
-This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
-For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
-contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
+This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/). For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
+
+## Trademarks
+
+This project may contain trademarks or logos for projects, products, or services.
+
+Authorized use of Microsoft trademarks or logos is subject to and must follow [Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general).
+
+Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship.
+
+Any use of third-party trademarks or logos are subject to those third-party's policies.

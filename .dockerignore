@@ -3,6 +3,7 @@ test-pipeline.txt
 .dockerignore
 .gitignore
 Dockerfile*
+*.sln
 *.suo
 *.user
 *.userosscache
